@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.persistence.base import Base
@@ -9,6 +9,7 @@ from app.persistence.base import Base
 
 class IncidentRecord(Base):
     __tablename__ = "incidents"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -21,6 +22,7 @@ class IncidentRecord(Base):
 
 class AgentRunRecord(Base):
     __tablename__ = "agent_runs"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"))
     architecture_version: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -34,6 +36,7 @@ class AgentRunRecord(Base):
 
 class EvidenceRecord(Base):
     __tablename__ = "evidence"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"))
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"))
@@ -48,6 +51,7 @@ class EvidenceRecord(Base):
 
 class HypothesisRecord(Base):
     __tablename__ = "hypotheses"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"))
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -62,6 +66,7 @@ class HypothesisRecord(Base):
 
 class ToolCallRecord(Base):
     __tablename__ = "tool_calls"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"))
     tool_name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -75,6 +80,7 @@ class ToolCallRecord(Base):
 
 class ApprovalRecord(Base):
     __tablename__ = "approvals"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"))
     action: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
@@ -86,8 +92,11 @@ class ApprovalRecord(Base):
 
 class DiagnosisRecord(Base):
     __tablename__ = "diagnoses"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), unique=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="CASCADE"), unique=True
+    )
     primary_root_cause: Mapped[str] = mapped_column(Text, nullable=False)
     secondary_root_causes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
@@ -98,6 +107,7 @@ class DiagnosisRecord(Base):
 
 class EvaluationRunRecord(Base):
     __tablename__ = "evaluation_runs"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     dataset_version: Mapped[str] = mapped_column(String(80), nullable=False)
     architecture_version: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -109,8 +119,11 @@ class EvaluationRunRecord(Base):
 
 class EvaluationScoreRecord(Base):
     __tablename__ = "evaluation_scores"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    evaluation_run_id: Mapped[str] = mapped_column(ForeignKey("evaluation_runs.id", ondelete="CASCADE"))
+    evaluation_run_id: Mapped[str] = mapped_column(
+        ForeignKey("evaluation_runs.id", ondelete="CASCADE")
+    )
     scenario_id: Mapped[str] = mapped_column(String(120), nullable=False)
     metric_name: Mapped[str] = mapped_column(String(120), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -119,8 +132,11 @@ class EvaluationScoreRecord(Base):
 
 class ExperimentMetadataRecord(Base):
     __tablename__ = "experiment_metadata"
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    evaluation_run_id: Mapped[str | None] = mapped_column(ForeignKey("evaluation_runs.id", ondelete="CASCADE"))
+    evaluation_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("evaluation_runs.id", ondelete="CASCADE")
+    )
     prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
     scenario_version: Mapped[str] = mapped_column(String(80), nullable=False)
     evaluation_version: Mapped[str] = mapped_column(String(80), nullable=False)
