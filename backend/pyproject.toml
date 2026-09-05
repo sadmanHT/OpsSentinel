@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opssentinel-backend"
+version = "0.1.0"
+description = "OpsSentinel backend foundation"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.13,<2",
+  "fastapi>=0.115,<1",
+  "pgvector>=0.3,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.5,<3",
+  "redis>=5,<7",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27,<1",
+  "mypy>=1.11,<2",
+  "pytest>=8,<10",
+  "pytest-asyncio>=0.24,<2",
+  "ruff>=0.8,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: tests requiring PostgreSQL/Redis services",
+]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+packages = ["app"]

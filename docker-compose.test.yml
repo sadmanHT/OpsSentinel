@@ -1,0 +1,13 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: opssentinel_test
+
+  backend:
+    environment:
+      OPSSENTINEL_ENVIRONMENT: test
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@postgres:5432/opssentinel_test
+    command: ["sh", "-c", "alembic upgrade head && pytest tests"]
+
+  frontend:
+    profiles: ["ui"]
