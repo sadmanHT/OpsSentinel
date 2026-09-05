@@ -90,3 +90,43 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.test.yml config >/dev/null
       - name: Build images
         run: docker compose build
+      - name: Clean-state integration smoke test
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build
+
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            echo "Backend did not become healthy"
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+
+          curl --fail --show-error http://127.0.0.1:8000/health
+          docker compose exec -T postgres psql -U opssentinel -d opssentinel \
+            -c "SELECT to_regclass('public.incidents') AS incidents_table;" \
+            | grep incidents
+          docker compose ps
+
+          docker compose logs backend --no-color > /tmp/opssentinel-backend.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            cat /tmp/opssentinel-backend.log
+            exit 1
+          fi
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color || true
+      - name: Tear down clean-state environment
+        if: always()
+        run: docker compose down -v --remove-orphans || true
