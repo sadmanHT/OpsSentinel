@@ -15,8 +15,11 @@ The project is implemented in ten gated phases. A phase is complete only after i
 
 ## Current implementation status
 
-- **Phase 1 — Foundation, Contracts, and Reproducible Development Environment:** in progress on `phase-1-foundation`.
-- Phases 2–10 are intentionally not implemented until Phase 1's cumulative gate passes.
+- ✅ **Phase 1 — Foundation, Contracts, and Reproducible Development Environment:** cumulative gate passed.
+- ⏭️ **Phase 2 — ChaosLab Production Simulator:** next implementation phase.
+- Phases 3–10 remain gated behind successful completion of all prior phases.
+
+Phase 1 was validated with linting, strict typing, unit tests, PostgreSQL integration tests, migration upgrade/downgrade/re-upgrade, frontend production build, Compose validation/image builds, and a clean-state full-container smoke test. See `docs/phase-1-handoff.md` for the recorded validation evidence and defects that were discovered and repaired during the gate.
 
 ## Phase 1 stack
 
