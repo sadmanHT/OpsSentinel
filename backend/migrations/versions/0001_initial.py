@@ -5,8 +5,8 @@ Revises:
 """
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0001_initial"
 down_revision: str | None = None
@@ -29,7 +29,12 @@ def upgrade() -> None:
     op.create_table(
         "agent_runs",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("incident_id", sa.String(36), sa.ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "incident_id",
+            sa.String(36),
+            sa.ForeignKey("incidents.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("architecture_version", sa.String(80), nullable=False),
         sa.Column("model", sa.String(120), nullable=False),
         sa.Column("step_count", sa.Integer(), nullable=False, server_default="0"),
@@ -41,8 +46,15 @@ def upgrade() -> None:
     op.create_table(
         "evidence",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("incident_id", sa.String(36), sa.ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE")),
+        sa.Column(
+            "incident_id",
+            sa.String(36),
+            sa.ForeignKey("incidents.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE")
+        ),
         sa.Column("source", sa.String(120), nullable=False),
         sa.Column("evidence_type", sa.String(40), nullable=False),
         sa.Column("service", sa.String(120)),
@@ -54,7 +66,12 @@ def upgrade() -> None:
     op.create_table(
         "hypotheses",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "run_id",
+            sa.String(36),
+            sa.ForeignKey("agent_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("root_cause_code", sa.String(120), nullable=False),
         sa.Column("confidence", sa.Float(), nullable=False),
@@ -67,7 +84,12 @@ def upgrade() -> None:
     op.create_table(
         "tool_calls",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "run_id",
+            sa.String(36),
+            sa.ForeignKey("agent_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("tool_name", sa.String(120), nullable=False),
         sa.Column("arguments", sa.JSON(), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
@@ -79,7 +101,12 @@ def upgrade() -> None:
     op.create_table(
         "approvals",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "run_id",
+            sa.String(36),
+            sa.ForeignKey("agent_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("action", sa.JSON(), nullable=False),
         sa.Column("risk_level", sa.String(8), nullable=False),
         sa.Column("decision", sa.String(32)),
@@ -89,7 +116,13 @@ def upgrade() -> None:
     op.create_table(
         "diagnoses",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("run_id", sa.String(36), sa.ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, unique=True),
+        sa.Column(
+            "run_id",
+            sa.String(36),
+            sa.ForeignKey("agent_runs.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+        ),
         sa.Column("primary_root_cause", sa.Text(), nullable=False),
         sa.Column("secondary_root_causes", sa.JSON(), nullable=False),
         sa.Column("confidence", sa.Float(), nullable=False),
@@ -110,7 +143,12 @@ def upgrade() -> None:
     op.create_table(
         "evaluation_scores",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("evaluation_run_id", sa.String(36), sa.ForeignKey("evaluation_runs.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "evaluation_run_id",
+            sa.String(36),
+            sa.ForeignKey("evaluation_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("scenario_id", sa.String(120), nullable=False),
         sa.Column("metric_name", sa.String(120), nullable=False),
         sa.Column("score", sa.Float(), nullable=False),
@@ -119,7 +157,11 @@ def upgrade() -> None:
     op.create_table(
         "experiment_metadata",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("evaluation_run_id", sa.String(36), sa.ForeignKey("evaluation_runs.id", ondelete="CASCADE")),
+        sa.Column(
+            "evaluation_run_id",
+            sa.String(36),
+            sa.ForeignKey("evaluation_runs.id", ondelete="CASCADE"),
+        ),
         sa.Column("prompt_version", sa.String(80), nullable=False),
         sa.Column("scenario_version", sa.String(80), nullable=False),
         sa.Column("evaluation_version", sa.String(80), nullable=False),
