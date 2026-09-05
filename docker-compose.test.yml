@@ -11,3 +11,27 @@ services:
 
   frontend:
     profiles: ["ui"]
+
+  chaoslab-controller:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test
+
+  checkout:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test
+
+  inventory:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test
+
+  payment:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test
+
+  worker:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test
+
+  gateway:
+    environment:
+      CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel_test

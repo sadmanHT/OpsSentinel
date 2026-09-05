@@ -1,5 +1,23 @@
 name: opssentinel
 
+x-chaoslab-service: &chaoslab-service
+  build:
+    context: ./chaoslab
+  environment: &chaoslab-env
+    CHAOSLAB_REDIS_URL: redis://redis:6379/1
+    CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel
+    CHAOSLAB_SEED: 42
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+    interval: 5s
+    timeout: 3s
+    retries: 15
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -59,6 +77,67 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+  chaoslab-controller:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: controller
+    command: ["uvicorn", "chaoslab.controller:app", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "8100:8080"
+
+  checkout:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: checkout
+    ports:
+      - "8101:8080"
+
+  inventory:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: inventory
+    ports:
+      - "8102:8080"
+
+  payment:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: payment
+    ports:
+      - "8103:8080"
+
+  worker:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: worker
+    ports:
+      - "8104:8080"
+
+  gateway:
+    <<: *chaoslab-service
+    environment:
+      <<: *chaoslab-env
+      CHAOSLAB_SERVICE_NAME: gateway
+      CHAOSLAB_CHECKOUT_URL: http://checkout:8080
+      CHAOSLAB_INVENTORY_URL: http://inventory:8080
+      CHAOSLAB_PAYMENT_URL: http://payment:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      checkout:
+        condition: service_healthy
+      payment:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
