@@ -1,5 +1,5 @@
-from app.persistence.base import Base
 from app.persistence import models  # noqa: F401
+from app.persistence.base import Base
 
 
 def test_phase_one_tables_are_registered() -> None:
