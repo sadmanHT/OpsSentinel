@@ -2,8 +2,6 @@ services:
   postgres:
     environment:
       POSTGRES_DB: opssentinel_test
-    tmpfs:
-      - /var/lib/postgresql/data
 
   backend:
     environment:
