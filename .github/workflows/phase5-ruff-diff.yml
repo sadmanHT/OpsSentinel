@@ -1,0 +1,19 @@
+name: Phase5 Ruff Diff
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ruff-diff:
+    if: github.head_ref == 'phase-5-closeout'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Ruff
+        run: python -m pip install 'ruff==0.16.6'
+      - name: Print exact autofix diff
+        run: ruff check --fix --diff backend/tests/test_phase5_mcp_failure_matrix.py
