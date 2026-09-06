@@ -5,11 +5,11 @@ from collections.abc import Iterable
 from typing import Any
 
 from benchmarklab.models import (
+    FAULT_RCA_CODES,
+    LEAKAGE_ALIASES,
     BenchmarkCatalog,
     BenchmarkSplit,
     Difficulty,
-    FAULT_RCA_CODES,
-    LEAKAGE_ALIASES,
     ScenarioKind,
     ScenarioSpec,
 )
