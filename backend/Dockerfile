@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl git procps \
+    && git config --system --add safe.directory /workspace \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/backend
