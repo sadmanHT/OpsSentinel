@@ -40,7 +40,7 @@ jobs:
             backend/migrations/versions/0005_experiment_trials.py
 
       - name: Mypy
-        run: mypy researchlab/researchlab
+        run: mypy --config-file researchlab/pyproject.toml researchlab/researchlab
 
       - name: Unit and integrity tests
         run: pytest researchlab/tests
