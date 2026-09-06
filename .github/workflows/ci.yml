@@ -180,7 +180,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:8101/metrics | grep chaoslab_db_queries_last_request
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
           curl --fail --silent http://127.0.0.1:8000/mcp/tools | grep search_logs
-          curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase4-single-agent-v1
+          curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase5-safe-operational-agent-v1
 
           docker compose ps
           docker compose logs backend --no-color > /tmp/opssentinel-backend.log
