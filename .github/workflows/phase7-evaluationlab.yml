@@ -19,7 +19,9 @@ jobs:
       - name: Install EvaluationLab
         run: python -m pip install -e 'evaluationlab[dev]'
       - name: Ruff
-        run: ruff check evaluationlab scripts/phase7-evaluation-smoke.py
+        run: >-
+          ruff check evaluationlab scripts/phase7-evaluation-smoke.py
+          scripts/phase7-representative-evaluation-smoke.py
       - name: Mypy
         run: mypy evaluationlab/evaluationlab
       - name: Known-answer metric tests
