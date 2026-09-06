@@ -214,6 +214,7 @@ jobs:
           python scripts/phase6-benchmark-smoke.py
           python scripts/phase7-evaluation-smoke.py
           python scripts/phase7-representative-evaluation-smoke.py
+          python scripts/phase7-counterfactual-evaluation-smoke.py
 
           checkpoint_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM agent_checkpoints;")
@@ -225,11 +226,14 @@ jobs:
             "SELECT COUNT(*) FROM evaluation_scores;")
           experiment_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM experiment_metadata;")
+          counterfactual_metric_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
+            "SELECT COUNT(*) FROM evaluation_scores WHERE scenario_id = 'counterfactual:deploy-cron-latency' AND metric_name IN ('counterfactual.consistency','counterfactual.causal_sensitivity','counterfactual.causal_invariance');")
           test "$checkpoint_count" -ge 18
           test "$diagnosis_count" -ge 18
-          test "$evaluation_run_count" -ge 6
-          test "$evaluation_score_count" -ge 6
-          test "$experiment_count" -ge 6
+          test "$evaluation_run_count" -ge 11
+          test "$evaluation_score_count" -ge 11
+          test "$experiment_count" -ge 10
+          test "$counterfactual_metric_count" -eq 3
 
           docker compose exec -T gateway python - <<'PY'
           import asyncio
