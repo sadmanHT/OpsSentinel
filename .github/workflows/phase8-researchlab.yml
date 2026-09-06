@@ -1,0 +1,36 @@
+name: Phase 8 ResearchLab
+
+on:
+  push:
+    branches:
+      - phase-8-controlled-research
+  pull_request:
+    paths:
+      - "researchlab/**"
+      - "scripts/phase8-*.py"
+      - ".github/workflows/phase8-researchlab.yml"
+
+jobs:
+  researchlab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ResearchLab
+        run: python -m pip install -e 'researchlab[dev]'
+
+      - name: Ruff
+        run: ruff check researchlab scripts/phase8-research-smoke.py
+
+      - name: Mypy
+        run: mypy researchlab/researchlab
+
+      - name: Unit and integrity tests
+        run: pytest researchlab/tests
+
+      - name: Controlled-plan smoke
+        run: python scripts/phase8-research-smoke.py
