@@ -15,7 +15,6 @@ from evaluationlab.models import (
     ToolCallOutcome,
 )
 
-
 ROOT_CAUSE_ALIASES: dict[str, RootCauseCode] = {
     "n_plus_one": RootCauseCode.N_PLUS_ONE,
     "n_plus_one_query": RootCauseCode.N_PLUS_ONE,
