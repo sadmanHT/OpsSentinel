@@ -83,6 +83,7 @@ jobs:
         run: pytest chaoslab/tests
       - name: Import smoke tests
         run: |
+          python -c "from chaoslab import ChaosLabClient; assert ChaosLabClient"
           python -c "from chaoslab.models import FaultSpec, FaultType; assert FaultSpec(fault=FaultType.N_PLUS_ONE, service='checkout').seed == 42"
           python -c "from chaoslab.loadgen import PROFILES; assert {'normal','burst','sustained'} <= set(PROFILES)"
 
@@ -145,6 +146,16 @@ jobs:
 
           python scripts/phase2-smoke.py
 
+          docker compose exec -T gateway python - <<'PY'
+          import asyncio
+          from chaoslab.loadgen import run_profile
+
+          result = asyncio.run(run_profile("http://gateway:8080", "normal", "/checkout"))
+          assert result["requests"] == 20, result
+          assert result["errors"] == 0, result
+          print(result)
+          PY
+
           curl --fail --silent http://127.0.0.1:8101/metrics | grep chaoslab_db_queries_last_request
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
 
@@ -167,12 +178,63 @@ jobs:
       - name: Restart cleanup regression
         run: |
           set -euo pipefail
+
+          curl --fail --silent -X POST http://127.0.0.1:8100/faults/inject \
+            -H 'Content-Type: application/json' \
+            -d '{"fault":"memory_leak","service":"worker","severity":"P3","seed":42,"configuration":{"chunk_bytes":262144,"max_bytes":1048576}}' >/dev/null
+          curl --fail --silent -X POST http://127.0.0.1:8100/faults/inject \
+            -H 'Content-Type: application/json' \
+            -d '{"fault":"connection_leak","service":"inventory","severity":"P3","seed":42,"configuration":{"capacity":4}}' >/dev/null
+
+          curl --fail --silent -X POST http://127.0.0.1:8104/work >/dev/null
+          curl --fail --silent http://127.0.0.1:8102/inventory/SKU-RED >/dev/null
+
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          def read(url):
+              with urllib.request.urlopen(url, timeout=5) as response:
+                  return json.load(response)
+
+          assert read("http://127.0.0.1:8104/telemetry")["simulated_memory_leak_bytes"] > 0
+          assert read("http://127.0.0.1:8102/telemetry")["simulated_db_connections"] > 0
+          assert len(read("http://127.0.0.1:8100/faults")) == 2
+          PY
+
           docker compose restart worker inventory
-          sleep 5
-          curl --fail --silent http://127.0.0.1:8104/health >/dev/null
-          curl --fail --silent http://127.0.0.1:8102/health >/dev/null
-          curl --fail --silent http://127.0.0.1:8104/telemetry | grep '"simulated_memory_leak_bytes":0'
-          curl --fail --silent http://127.0.0.1:8102/telemetry | grep '"simulated_db_connections":0'
+
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8104/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" -eq 1
+
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          def read(url):
+              with urllib.request.urlopen(url, timeout=5) as response:
+                  return json.load(response)
+
+          assert read("http://127.0.0.1:8104/telemetry")["simulated_memory_leak_bytes"] == 0
+          assert read("http://127.0.0.1:8102/telemetry")["simulated_db_connections"] == 0
+          faults = read("http://127.0.0.1:8100/faults")
+          assert {(item["fault"], item["service"]) for item in faults} == {
+              ("memory_leak", "worker"),
+              ("connection_leak", "inventory"),
+          }
+          PY
+
+          curl --fail --silent -X POST http://127.0.0.1:8100/faults/restore-all \
+            -H 'Content-Type: application/json' -d '{}' >/dev/null
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs --no-color || true
