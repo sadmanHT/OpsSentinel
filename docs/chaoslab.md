@@ -1,6 +1,8 @@
-# ChaosLab
+# ChaosLab Production Simulator
 
-ChaosLab is OpsSentinel's reproducible production-incident simulator. It exists independently of the AI agent so incidents can be validated manually and used as controlled experimental inputs.
+ChaosLab is OpsSentinel's reproducible production-incident simulator. It exists independently of the AI agent so incidents can be validated manually and later used as controlled experimental inputs.
+
+The controller is a **scenario-control boundary**, not an investigation surface. Future OpsSentinel agents must never receive controller access because active fault definitions reveal benchmark ground truth.
 
 ## Topology
 
@@ -15,66 +17,127 @@ Shared control state: Redis DB 1
 Fault injection: ChaosLab Controller
 ```
 
-All service requests emit structured JSON logs and expose Prometheus-compatible `/metrics` plus a human-readable `/telemetry` snapshot. The `/telemetry` endpoint contains observations only; it does not identify the injected fault or ground-truth root cause.
+All service requests emit structured JSON request-completion logs and expose Prometheus-compatible `/metrics` plus a human-readable `/telemetry` snapshot. `/telemetry` contains observations only; it does not identify the injected fault or ground-truth root cause.
 
-## Safety of the simulator
+## Safe simulation boundaries
 
-ChaosLab deliberately produces production-like symptoms without destabilizing the host or CI runner:
+ChaosLab produces production-like symptoms without destabilizing the host or CI runner:
 
 - disk exhaustion writes only small, bounded files inside the service container;
-- memory leaks retain a bounded buffer and trigger a controlled simulated restart event rather than intentionally OOM-killing the host;
-- connection leaks use a bounded simulated pool counter rather than exhausting the real PostgreSQL server;
-- all artifacts are reset on fault restoration or container replacement.
+- memory leaks retain a bounded buffer and trigger a controlled simulated restart event instead of intentionally OOM-killing the host;
+- connection leaks use a bounded simulated pool counter instead of exhausting the real PostgreSQL server;
+- restoration clears process-local fault artifacts;
+- container replacement clears process-local artifacts by construction.
 
-These constraints preserve diagnostic signals while keeping repeated experiments reproducible and safe.
+These boundaries preserve diagnostic signals while keeping repeated experiments safe and reproducible.
 
-## Controller API
+## Controller API and Python client
 
-Inject a fault:
+The controller exposes:
 
-```bash
-curl -X POST http://localhost:8100/faults/inject \
-  -H 'content-type: application/json' \
-  -d '{"fault":"n_plus_one","service":"checkout","severity":"P1","seed":42}'
+- `POST /faults/inject`
+- `GET /faults`
+- `POST /faults/restore`
+- `POST /faults/restore-all`
+
+The equivalent Python lifecycle is:
+
+```python
+from chaoslab import ChaosLabClient
+
+chaos = ChaosLabClient()
+chaos.inject("n_plus_one", service="checkout", severity="P1")
+chaos.status()
+chaos.restore("checkout")
+chaos.restore_all()
 ```
 
-Restore a service:
+Reinjecting the same fault/service replaces the active state and increments its generation. Restoring a non-active fault is safe and reports zero removals.
 
-```bash
-curl -X POST http://localhost:8100/faults/restore \
-  -H 'content-type: application/json' \
-  -d '{"service":"checkout"}'
-```
+## Supported fault targets
 
-Restore all faults:
+| Fault | Supported target(s) | Primary observable effect |
+| --- | --- | --- |
+| `n_plus_one` | checkout | query count and latency rise while requests continue succeeding |
+| `connection_leak` | checkout, inventory | simulated active connections grow until pool timeout/503 |
+| `disk_exhaustion` | gateway, checkout, inventory, payment, worker | simulated disk usage grows until write failure/507 |
+| `broken_config` | payment | payment authentication/configuration fails while unrelated services remain healthy |
+| `memory_leak` | gateway, checkout, inventory, payment, worker | retained memory grows until a controlled simulated restart/503 |
 
-```bash
-curl -X POST http://localhost:8100/faults/restore-all
-```
+Unsupported fault/service pairs are rejected rather than silently creating a no-op scenario.
 
-The controller is an experimental harness boundary. Future OpsSentinel agents must not receive this interface as an investigation tool because it reveals fault-control state.
+## Severity semantics
 
-## Fault primitives
+Severity is monotonic:
 
-### `n_plus_one`
+- `P1` produces the strongest or earliest failure behavior;
+- `P2` is intermediate;
+- `P3` allows more progression before terminal failure.
 
-Target: checkout. Healthy `/orders` performs one joined query. Under the fault, each order and item triggers additional queries, increasing request latency and the `db_query_count_last_request` signal without requiring a fatal application exception.
+For progressive disk, memory, and connection faults, higher severity reaches failure earlier. Unit tests lock this relationship in so benchmark difficulty cannot be accidentally inverted later.
 
-### `connection_leak`
+## Manual diagnosis guide
 
-Target: inventory. Each request consumes a bounded simulated connection slot until the configured capacity is reached, after which the service returns pool-timeout symptoms. Restoration clears the simulated pool.
+Phase 2 is valid only if a human can infer each fault from legal observables rather than the hidden controller state.
 
-### `disk_exhaustion`
+### N+1 query
 
-Target: worker. Requests create bounded debug-log files and eventually return HTTP 507 with rising simulated disk utilization.
+Expected evidence:
 
-### `broken_config`
+- healthy `/orders` performs one batched query;
+- under the fault, `/orders` still succeeds but query count increases sharply;
+- `chaoslab_db_queries_last_request` rises;
+- request latency rises;
+- a fatal application exception is not required.
 
-Target: payment. A configuration/authentication failure causes charge attempts to return HTTP 401 while unrelated infrastructure remains healthy.
+### Connection leak
 
-### `memory_leak`
+Expected evidence:
 
-Target: worker. Requests retain bounded memory chunks. Crossing a deterministic threshold records a simulated restart and returns HTTP 503; the buffer is cleared to keep the environment safe.
+- early inventory/checkout requests succeed;
+- `simulated_db_connections` grows monotonically;
+- the effective capacity is eventually reached;
+- requests then fail with connection-pool timeout/503;
+- restore returns connection state to zero.
+
+### Disk exhaustion
+
+Expected evidence:
+
+- simulated disk usage rises over successive requests;
+- service health remains available while the fault progresses;
+- requests eventually fail with simulated `no space left on device`/507;
+- restore deletes bounded simulator files and returns usage to zero.
+
+### Broken configuration
+
+Expected evidence:
+
+- payment succeeds before injection;
+- payment fails with authentication/configuration rejection after injection;
+- the gateway reports a payment dependency failure;
+- unrelated inventory requests continue succeeding;
+- restore returns both payment and gateway behavior to baseline.
+
+### Memory leak
+
+Expected evidence:
+
+- retained simulated bytes grow across requests;
+- the process eventually records a controlled restart event and fails the triggering request;
+- retained bytes clear after that simulated restart;
+- the restart counter remains visible as evidence;
+- explicit restore returns subsequent requests to baseline.
+
+## Restart semantics
+
+ChaosLab distinguishes **scenario intent** from **ephemeral process artifacts**:
+
+- active fault definitions live in Redis and intentionally survive a service-container restart;
+- leaked connection counters, retained memory chunks, and temporary process-local artifacts do not survive restart;
+- an explicit controller restore removes scenario intent and resets the target service.
+
+The Phase 2 CI gate injects active memory- and connection-leak faults, proves process-local state is non-zero, restarts both services, proves that ephemeral state returned to zero, verifies the fault definitions still exist in Redis, and finally restores them explicitly.
 
 ## Reproducibility
 
@@ -87,12 +150,26 @@ Each injected fault records:
 - fault-specific configuration;
 - generation.
 
-The same fault configuration and seed must preserve the same causal structure and thresholds. Later benchmark phases will version entire scenarios on top of these primitives.
+The same fault configuration and seed must preserve the same causal structure and deterministic thresholds. Later benchmark phases will version entire scenarios on top of these primitives.
 
 ## Load generator
 
-`chaoslab.loadgen` supports normal, burst, and sustained profiles and records request count, errors, mean latency, and p95 latency.
+`chaoslab.loadgen` supports:
+
+- `normal`;
+- `burst`;
+- `sustained`.
+
+The target base URL and path are configurable, so traffic can be directed at the gateway or a specific service. It records request count, errors, mean latency, and p95 latency. The cumulative CI gate executes the normal profile against the live gateway after fault restoration and requires zero request errors.
 
 ## Phase 2 validation
 
-The cumulative gate runs `scripts/phase2-smoke.py` against a fresh Docker Compose environment. It proves every fault can be injected, produces the expected observable symptom, can be restored, and returns to a healthy baseline while all Phase 1 gates remain green.
+```bash
+make chaoslab-test
+make compose-validate
+docker compose down -v --remove-orphans
+docker compose up -d --build
+python scripts/phase2-smoke.py
+```
+
+The complete Phase 2 gate also reruns every Phase 1 lint, typing, migration, integration, frontend-build, and clean-start requirement. Phase 2 is not complete until those prior guarantees and all ChaosLab tests pass together from a clean environment.
