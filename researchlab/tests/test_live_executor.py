@@ -4,7 +4,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-
 from benchmarklab.catalog import load_catalog
 from benchmarklab.models import BenchmarkRunArtifact, ScenarioSpec
 from evaluationlab.models import EvaluationResult
@@ -13,6 +12,7 @@ from evaluationlab.persistence import (
     ExperimentConfiguration,
     PersistedEvaluation,
 )
+
 from researchlab.benchmark_adapter import scenario_ref_from_benchmark
 from researchlab.live_executor import (
     ARCHITECTURE_VERSION_BY_VARIANT,
