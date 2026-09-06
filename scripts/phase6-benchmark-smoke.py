@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Any
 
 import httpx
-
 from benchmarklab.models import Difficulty, ScenarioSpec
 from benchmarklab.validation import (
     validate_agent_payload_is_public_only,
