@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 from statistics import fmean
-from typing import Any
 
 from benchmarklab.models import BenchmarkCatalog
 from pydantic import BaseModel, ConfigDict, Field
