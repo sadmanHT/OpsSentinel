@@ -7,7 +7,6 @@ from app.config import Settings
 from app.mcp.models import ExecuteSqlArgs, PermissionSet
 from app.mcp.tools import InvestigationTools
 
-
 pytestmark = pytest.mark.integration
 
 
