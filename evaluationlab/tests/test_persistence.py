@@ -2,8 +2,18 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, MetaData, String, Table
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+)
 
 from evaluationlab.engine import EvaluationEngine
 from evaluationlab.models import EvaluationCase, FailureCategory
