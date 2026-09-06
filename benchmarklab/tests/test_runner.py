@@ -43,6 +43,37 @@ async def test_launch_operates_without_agent_and_records_faults() -> None:
 
 
 @pytest.mark.asyncio
+async def test_launch_restores_after_stimulus_failure() -> None:
+    scenario = next(
+        item for item in load_catalog().scenarios if item.difficulty == Difficulty.EASY
+    )
+    active: list[dict[str, Any]] = []
+    restore_calls = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal restore_calls
+        if request.url.path == "/faults/restore-all":
+            restore_calls += 1
+            active.clear()
+            return httpx.Response(200, json={"status": "restored", "removed": 0})
+        if request.url.path == "/faults/inject":
+            payload = json.loads(request.content)
+            active.append(payload)
+            return httpx.Response(200, json={**payload, "active": True})
+        if request.url.path == "/faults":
+            return httpx.Response(200, json=active)
+        return httpx.Response(500, json={"error": "injected stimulus failure"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        runner = BenchmarkRunner(client=client)
+        with pytest.raises(RuntimeError):
+            await runner.launch(scenario)
+
+    assert restore_calls == 2
+    assert active == []
+
+
+@pytest.mark.asyncio
 async def test_agent_request_never_contains_hidden_benchmark_labels() -> None:
     scenario = next(
         item for item in load_catalog().scenarios if item.difficulty == Difficulty.MEDIUM
