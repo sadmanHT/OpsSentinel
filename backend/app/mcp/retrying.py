@@ -4,9 +4,9 @@ import asyncio
 from contextvars import ContextVar
 from dataclasses import dataclass
 
-from app.mcp.models import ToolDefinition, ToolInvocation, ToolResponse
+from app.mcp.models import ToolDefinition, ToolError, ToolInvocation, ToolResponse
 from app.mcp.registry import ToolRegistry
-from app.models.domain import ToolCallStatus
+from app.models.domain import RiskLevel, ToolCallStatus, utc_now
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,9 @@ class RetryingToolRegistry(ToolRegistry):
     """Retry retryable tool failures while preserving the original safety policy.
 
     The wrapped registry remains the authority for permissions and R0-R3 policy. This
-    decorator only decides whether a retryable failure should be attempted again.
+    decorator only decides whether a retryable failure should be attempted again. It
+    also converts unexpected handler failures into bounded ToolResponses so an MCP
+    integration defect cannot crash the Phase 5 agent runtime.
     """
 
     def __init__(
@@ -47,6 +49,9 @@ class RetryingToolRegistry(ToolRegistry):
         self.inner = inner
         self.max_retries = max_retries
         self.backoff_seconds = backoff_seconds
+        self._risk_by_tool = {
+            definition.name: definition.risk_level for definition in inner.definitions()
+        }
 
     def definitions(self) -> list[ToolDefinition]:
         return self.inner.definitions()
@@ -77,10 +82,26 @@ class RetryingToolRegistry(ToolRegistry):
     ) -> ToolResponse:
         attempt = 1
         while True:
-            response = await self.inner.invoke(
-                invocation,
-                trusted_approval_id=trusted_approval_id,
-            )
+            try:
+                response = await self.inner.invoke(
+                    invocation,
+                    trusted_approval_id=trusted_approval_id,
+                )
+            except Exception:
+                now = utc_now()
+                response = ToolResponse(
+                    tool=invocation.tool,
+                    status=ToolCallStatus.FAILED,
+                    risk_level=self._risk_by_tool.get(invocation.tool, RiskLevel.R0),
+                    started_at=now,
+                    completed_at=utc_now(),
+                    error=ToolError(
+                        code="unexpected_tool_error",
+                        message="tool execution failed unexpectedly or returned a malformed result",
+                        retryable=False,
+                    ),
+                )
+
             if response.status == ToolCallStatus.SUCCEEDED:
                 return response
 

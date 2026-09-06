@@ -17,8 +17,11 @@ The project is implemented in ten gated phases. A phase is complete only after i
 
 - ✅ **Phase 1 — Foundation, Contracts, and Reproducible Development Environment:** cumulative gate passed.
 - ✅ **Phase 2 — ChaosLab Production Simulator:** cumulative gate passed and revalidated on `main`.
-- 🚧 **Phase 3 — MCP Investigation Tooling and Safety Boundary:** implementation branch in progress.
-- Phases 4–10 remain gated behind successful completion of all prior phases.
+- ✅ **Phase 3 — MCP Investigation Tooling and Safety Boundary:** cumulative gate passed.
+- ✅ **Phase 4 — First Autonomous Agent and Evidence-Driven Reasoning:** cumulative gate passed.
+- ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** implementation and closeout cumulative gate passed; see `docs/phase-5-handoff.md` for the final validation record and Phase 6 boundary.
+- 🚧 **Phase 6 — BenchmarkLab:** development may rely only on Phase 5 guarantees recorded in the handoff after final `main` revalidation.
+- Phases 7–10 remain gated behind successful completion of all prior phases.
 
 ## Stack in use
 
@@ -57,16 +60,10 @@ Useful endpoints after startup:
 - payment telemetry: `http://localhost:8103/telemetry`
 - worker telemetry: `http://localhost:8104/telemetry`
 
-Run the complete Phase 2 simulator smoke suite against a running environment:
-
-```bash
-make phase2-smoke
-```
-
-Phase 3 adds a controlled logical MCP registry for logs, metrics, read-only SQL, Git/deployment inspection, documentation search, and allowlisted diagnostics. The ChaosLab controller remains outside the legal agent surface. See `docs/mcp-safety.md` and `docs/phase-3-handoff.md`.
+Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations.
 
 ## Research integrity
 
 Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, or benchmark ground truth must never be modified merely to force a preferred research result. Negative or surprising findings are valid when the experiment is correct.
 
-See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, and `docs/phase-3-handoff.md`.
+See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, and `docs/phase-5-handoff.md`.
