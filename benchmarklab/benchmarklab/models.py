@@ -171,7 +171,7 @@ class ScenarioSpec(StrictModel):
     seed: int = Field(default=42, ge=0)
     public_incident: PublicIncident
     structure: StructuralIdentity
-    faults: list[FaultInjection] = Field(min_length=1)
+    faults: list[FaultInjection] = Field(default_factory=list)
     stimuli: list[Stimulus] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(min_length=1)
     ground_truth: GroundTruth
@@ -183,13 +183,18 @@ class ScenarioSpec(StrictModel):
         if self.public_incident.scenario_id != self.scenario_id:
             raise ValueError("public incident scenario_id must match scenario_id")
 
-        fault_codes = {FAULT_RCA_CODES[item.fault] for item in self.faults}
         expected_codes = {
             self.ground_truth.primary_root_cause_code,
             *self.ground_truth.secondary_root_cause_codes,
         }
-        if not expected_codes.issubset(fault_codes):
-            raise ValueError("ground-truth RCA codes must be explained by injected faults")
+        if self.faults:
+            fault_codes = {FAULT_RCA_CODES[item.fault] for item in self.faults}
+            if not expected_codes.issubset(fault_codes):
+                raise ValueError("ground-truth RCA codes must be explained by injected faults")
+        elif self.kind != ScenarioKind.COUNTERFACTUAL:
+            raise ValueError("only counterfactual scenarios may omit injected faults")
+        elif expected_codes != {"no_fault"}:
+            raise ValueError("fault-free counterfactual scenarios must use no_fault ground truth")
 
         if self.kind == ScenarioKind.COMPOUND:
             if len(self.faults) < 2:
