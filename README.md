@@ -4,7 +4,7 @@
 
 OpsSentinel studies a central question: **when does additional agent reasoning improve production-incident diagnosis, and when does it cause over-investigation, anchoring, wasted tool calls, overconfidence, or false conclusions?**
 
-The project is implemented in ten gated phases. A phase is complete only after its new behavior and every previously completed phase pass cumulative unit, integration, failure-path, regression, clean-start, and CI-equivalent validation.
+The project is implemented in ten gated phases. A phase is complete only after its new behavior and every previously completed phase pass cumulative unit, integration, failure-path, regression, clean-start, restart/recovery, and CI-equivalent validation.
 
 ## Four-system architecture
 
@@ -21,8 +21,8 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 4 — First Autonomous Agent and Evidence-Driven Reasoning:** cumulative gate passed.
 - ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
 - ✅ **Phase 6 — BenchmarkLab:** fully closed; PR #8 merged and the complete post-merge Phase 1–6 cumulative gate passed on `main`. See `docs/phase-6-handoff.md`.
-- 🚧 **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** implementation and code-complete clean-state branch validation have passed, including live representative and counterfactual evaluation. Documentation-inclusive branch validation, PR merge, and post-merge `main` proof remain required before closure. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
-- Phases 8–10 remain gated behind successful completion of Phase 7.
+- ✅ **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** implementation, documentation-inclusive branch validation, guarded PR #9 merge, and the complete post-merge Phase 1–7 cumulative gate have passed. Merge commit `a8c699948aafd3342439f9933190a8f0f9e10a80` passed push-triggered CI #153. This final status-only documentation commit must also retain green CI before Phase 8 work begins. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
+- Phases 8–10 remain gated behind the final Phase 7 status-head CI safeguard and their own cumulative completion gates.
 
 ## Stack in use
 
@@ -61,10 +61,10 @@ Useful endpoints after startup:
 - payment telemetry: `http://localhost:8103/telemetry`
 - worker telemetry: `http://localhost:8104/telemetry`
 
-Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations. Phase 6 adds a deterministic 50-scenario BenchmarkLab catalog, structural holdouts, temporal/adversarial/counterfactual/compound cases, leakage and reproducibility checks, independent scenario launch/cleanup, and a live benchmark-to-agent E2E. Phase 7 adds deterministic RCA/compound/evidence/efficiency/safety scoring, confidence calibration with Brier/ECE/reliability diagrams, persisted failure classifications and traces, five-tier live measurement, and a four-variant live counterfactual causal-consistency experiment. All are exercised in the cumulative clean-state gate.
+Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations. Phase 6 adds a deterministic 50-scenario BenchmarkLab catalog, structural holdouts, temporal/adversarial/counterfactual/compound cases, leakage and reproducibility checks, independent scenario launch/cleanup, and a live benchmark-to-agent E2E. Phase 7 adds deterministic RCA/compound/evidence/efficiency/safety scoring, confidence calibration with Brier/ECE/reliability diagrams, persisted evaluation/failure/experiment records, five-tier live measurement, and a four-variant live counterfactual causal-consistency experiment. All are exercised in the cumulative clean-state gate.
 
 ## Research integrity
 
-Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, scoring rules, or benchmark ground truth must never be modified merely to force a preferred research result. Negative or surprising findings are valid when the experiment is correct.
+Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, scoring rules, or benchmark ground truth must never be modified merely to force a preferred research result. Negative, null, or surprising findings are valid when the experiment is correct.
 
 See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, `docs/phase-5-handoff.md`, `docs/phase-6-handoff.md`, `docs/evaluationlab.md`, and `docs/phase-7-handoff.md`.

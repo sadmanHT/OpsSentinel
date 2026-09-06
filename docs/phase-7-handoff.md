@@ -2,7 +2,7 @@
 
 ## Status
 
-**Closure candidate.** Phase 7 implementation and code-complete branch validation have passed on head `9af9f157783afccc34b18b767494edaf59298b77`, including the complete clean-state Phase 1–7 cumulative gate, live representative evaluation, live controlled counterfactual evaluation, PostgreSQL restart/readback, restart cleanup, artifact upload, log inspection, and teardown. Documentation is now being synchronized on top of that validated implementation. Phase 7 is **not closed yet**: this documentation-inclusive head must pass the same required branch workflows, PR #9 must merge the exact validated head, and post-merge `main` cumulative validation must pass before Phase 8 is unblocked.
+**Closure record.** Phase 7 implementation, documentation-inclusive branch validation, exact-head PR #9 merge, and post-merge `main` cumulative validation have all passed. PR #9 merged validated head `84a486bc78c75c9e5c26bd7bf7a4c1128041b2cf` into `main` at `a8c699948aafd3342439f9933190a8f0f9e10a80`, and push-triggered CI **#153** passed the complete Phase 1–7 gate on that merge commit. This status-only documentation update changes no implementation; project policy still requires the CI triggered by this exact final status commit to remain green before Phase 8 work starts.
 
 ## Implementation summary
 
@@ -163,7 +163,27 @@ On head `9af9f157783afccc34b18b767494edaf59298b77`:
 - restart cleanup regression: PASS;
 - teardown: PASS.
 
-This is the current authoritative **implementation-complete** branch checkpoint. The documentation-inclusive head created after it still requires the same proof before merge.
+### Documentation-inclusive branch proof
+
+On head `84a486bc78c75c9e5c26bd7bf7a4c1128041b2cf`:
+
+- Phase 7 EvaluationLab **#94: PASS**;
+- Phase 6 BenchmarkLab **#89: PASS**;
+- cumulative CI **#152: PASS**;
+- documentation, handoff, EvaluationLab static/persistence checks, the clean-state Phase 1–7 Compose gate, research artifact upload, restart cleanup, and teardown all passed together on the exact PR head.
+
+### Merge and post-merge `main` proof
+
+- PR **#9** merged the exact validated head `84a486bc78c75c9e5c26bd7bf7a4c1128041b2cf` using an expected-head guard;
+- merge commit: `a8c699948aafd3342439f9933190a8f0f9e10a80`;
+- push-triggered `main` CI **#153: PASS**;
+- backend: PASS — Ruff, strict mypy, unit tests, startup/import smoke, migration upgrade, integration tests, migration rollback/re-upgrade;
+- ChaosLab: PASS — Ruff, unit tests, import smoke;
+- BenchmarkLab: PASS — Ruff, strict mypy, unit/integrity tests, catalog smoke;
+- frontend: PASS — production build;
+- Compose: PASS — validation/build, complete clean-state Phase 1–7 integration gate, Phase 7 research artifact upload, restart cleanup, and teardown.
+
+The documentation-inclusive branch head and merged `main` are therefore both substantively validated. This final status-only commit changes documentation status records only and must retain green CI as the last mechanical safeguard.
 
 ## Measured research findings from the validated local baseline
 
@@ -217,7 +237,7 @@ The perfect family causal scores therefore do **not** mean every variant was dia
 - live evaluation runs preserve actual scenario version, seed, tool budget, architecture identity, and provider/model provenance;
 - representative live validation spans every difficulty tier;
 - the counterfactual no-fault control is measured rather than coerced into a preferred result;
-- the complete Phase 1–7 system has passed together from a clean Compose environment on the code-complete branch head.
+- the complete Phase 1–7 system passes together from a clean Compose environment on the documentation-complete branch head and on post-merge `main`.
 
 ## Known non-blocking limitations
 
@@ -229,7 +249,7 @@ The perfect family causal scores therefore do **not** mean every variant was dia
 
 ## Exact Phase 8 prerequisites
 
-Phase 8 may rely on the following **only after** the final documentation-inclusive branch gates, exact-head PR merge, and post-merge `main` cumulative validation all pass:
+Phase 8 may rely on the following **only after** the CI triggered by this final status-only commit remains green:
 
 - the validated 50-scenario BenchmarkLab catalog, seeds, structural splits, and evaluator-only ground truth;
 - reproducible saved `BenchmarkRunArtifact` trajectories from real agent executions;
@@ -247,11 +267,4 @@ Phase 8 must not reinterpret the Phase 7 local-baseline measurements as hypothes
 
 ## Final closeout condition
 
-Phase 7 implementation and the code-complete cumulative gate are green. Closure still requires:
-
-1. the final documentation-inclusive branch head to pass Phase 7, Phase 6, and cumulative CI;
-2. PR #9 to merge the exact validated head;
-3. push-triggered post-merge `main` cumulative validation to pass;
-4. the final status record to reference those exact proofs without changing substantive implementation.
-
-Until those conditions pass, **Phase 7 remains in progress and Phase 8 remains blocked.**
+All substantive Phase 7 closeout conditions have passed: implementation, known-answer metric coverage, deterministic evaluation, PostgreSQL persistence/restart readback, representative five-tier live evaluation, controlled live counterfactual evaluation, safety scoring, failure taxonomy, research artifact generation, clean-state cumulative validation, documentation-inclusive branch proof, guarded PR merge, and post-merge `main` validation. The only remaining mechanical safeguard is that the automatically triggered CI for this exact status-only documentation commit must remain green. Once it does, **Phase 7 is fully closed and Phase 8 is unblocked.**
