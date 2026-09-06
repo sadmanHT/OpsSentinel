@@ -21,6 +21,12 @@ def test_mcp_registry_is_exposed_without_hidden_controller_tooling() -> None:
         "search_code",
         "search_documentation",
         "run_diagnostic",
+        "run_tests",
+        "reproduce_request",
+        "rerun_load_test",
+        "explain_analyze",
+        "restart_sandbox_service",
+        "rollback_sandbox_deployment",
     } == names
     assert all("fault" not in item["name"] for item in tools)
 
