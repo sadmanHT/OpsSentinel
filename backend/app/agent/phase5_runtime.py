@@ -64,6 +64,7 @@ class Phase5Runtime:
         *,
         operational_mode: bool = False,
     ) -> AgentState:
+        self._begin_retry_capture()
         state = await self.investigation.start(incident, budget)
         state.operational_mode = operational_mode
         self._capture_retry_events(state)
@@ -79,6 +80,7 @@ class Phase5Runtime:
         state = self.store.load(run_id)
         if state is None:
             raise KeyError(f"agent run {run_id} does not exist")
+        self._begin_retry_capture()
 
         if state.operational_mode:
             if (
@@ -124,6 +126,7 @@ class Phase5Runtime:
         state = self.store.load(run_id)
         if state is None:
             raise KeyError(f"agent run {run_id} does not exist")
+        self._begin_retry_capture()
         approval = state.approval
         if (
             not state.operational_mode
@@ -495,6 +498,10 @@ class Phase5Runtime:
             raw_reference=raw_reference,
             reliability=1.0,
         )
+
+    def _begin_retry_capture(self) -> None:
+        if isinstance(self.registry, RetryingToolRegistry):
+            self.registry.begin_capture()
 
     def _capture_retry_events(self, state: AgentState) -> int:
         if not isinstance(self.registry, RetryingToolRegistry):
