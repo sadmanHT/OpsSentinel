@@ -52,15 +52,34 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _selected_cells(
+    plan: ExperimentPlan,
+    cell_ids: Sequence[str] | None,
+) -> list[ExperimentCell]:
+    if cell_ids is None:
+        return list(plan.cells)
+    requested = list(cell_ids)
+    if len(requested) != len(set(requested)):
+        raise ValueError("selected experiment cell ids must be unique")
+    available = {cell.id: cell for cell in plan.cells}
+    unknown = sorted(set(requested) - set(available))
+    if unknown:
+        raise ValueError(f"unknown experiment cell ids: {', '.join(unknown)}")
+    requested_set = set(requested)
+    return [cell for cell in plan.cells if cell.id in requested_set]
+
+
 class ExperimentRunner:
     def enumerate_trials(
         self,
         plan: ExperimentPlan,
         scenarios: Sequence[ScenarioRef],
+        *,
+        cell_ids: Sequence[str] | None = None,
     ) -> list[tuple[TrialIdentity, ScenarioRef, ExperimentCell]]:
         ordered_scenarios = sorted(scenarios, key=lambda item: item.scenario_id)
         trials: list[tuple[TrialIdentity, ScenarioRef, ExperimentCell]] = []
-        for cell in plan.cells:
+        for cell in _selected_cells(plan, cell_ids):
             for scenario in ordered_scenarios:
                 if scenario.difficulty not in cell.difficulties:
                     continue
@@ -80,9 +99,15 @@ class ExperimentRunner:
         scenarios: Sequence[ScenarioRef],
         executor: TrialExecutor,
         store: TrialStore,
+        *,
+        cell_ids: Sequence[str] | None = None,
     ) -> list[TrialRecord]:
         results: list[TrialRecord] = []
-        for identity, scenario, cell in self.enumerate_trials(plan, scenarios):
+        for identity, scenario, cell in self.enumerate_trials(
+            plan,
+            scenarios,
+            cell_ids=cell_ids,
+        ):
             existing = store.load(identity.trial_id)
             if existing is not None and existing.status == TrialStatus.COMPLETED:
                 results.append(existing)
