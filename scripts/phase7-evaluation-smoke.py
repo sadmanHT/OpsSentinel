@@ -4,15 +4,15 @@ import asyncio
 import os
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from sqlalchemy import create_engine
-
-from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
-from evaluationlab import EvaluationEngine, adapt_benchmark_artifact
 from evaluationlab.persistence import (
     EvaluationRunMetadata,
     ExperimentConfiguration,
     SqlEvaluationStore,
 )
+from sqlalchemy import create_engine
+
+from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
+from evaluationlab import EvaluationEngine, adapt_benchmark_artifact
 
 DATABASE_URL = os.environ.get(
     "OPSSENTINEL_DATABASE_URL",
