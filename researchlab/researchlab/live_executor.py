@@ -6,7 +6,6 @@ from typing import Any, Protocol, cast
 from uuid import UUID
 
 import httpx
-
 from benchmarklab.catalog import scenario_by_id
 from benchmarklab.models import BenchmarkCatalog, ScenarioSpec
 from benchmarklab.runner import BenchmarkRunner
@@ -18,6 +17,7 @@ from evaluationlab.persistence import (
     ExperimentConfiguration,
     PersistedEvaluation,
 )
+
 from researchlab.models import (
     ArchitectureVariant,
     EvidenceMode,
