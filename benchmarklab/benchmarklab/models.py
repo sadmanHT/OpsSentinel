@@ -236,7 +236,10 @@ class ScenarioSpec(StrictModel):
             raise ValueError(f"public incident leaks hidden ground truth: {', '.join(leaked)}")
 
         if self.kind == ScenarioKind.COUNTERFACTUAL:
-            if not self.structure.counterfactual_family or not self.structure.counterfactual_variant:
+            if (
+                not self.structure.counterfactual_family
+                or not self.structure.counterfactual_variant
+            ):
                 raise ValueError("counterfactual scenarios require family and variant metadata")
         return self
 
