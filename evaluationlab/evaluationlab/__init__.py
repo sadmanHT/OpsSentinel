@@ -1,3 +1,4 @@
+from evaluationlab.adapter import adapt_benchmark_artifact, evidence_tags
 from evaluationlab.engine import EvaluationEngine
 from evaluationlab.metrics import (
     brier_score,
@@ -29,8 +30,10 @@ __all__ = [
     "RootCauseCode",
     "ToolCallAssessment",
     "ToolCallOutcome",
+    "adapt_benchmark_artifact",
     "brier_score",
     "canonical_root_cause",
+    "evidence_tags",
     "expected_calibration_error",
     "reliability_bins",
     "score_efficiency",
