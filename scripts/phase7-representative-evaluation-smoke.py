@@ -7,6 +7,7 @@ from collections import Counter
 from pathlib import Path
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from benchmarklab.models import Difficulty, ScenarioKind, ScenarioSpec
 from evaluationlab.persistence import (
     EvaluationRunMetadata,
     ExperimentConfiguration,
@@ -16,8 +17,12 @@ from evaluationlab.reporting import write_reliability_diagram
 from sqlalchemy import create_engine
 
 from benchmarklab import BenchmarkRunner, load_catalog
-from benchmarklab.models import Difficulty, ScenarioKind, ScenarioSpec
-from evaluationlab import EvaluationCase, EvaluationEngine, EvaluationResult, adapt_benchmark_artifact
+from evaluationlab import (
+    EvaluationCase,
+    EvaluationEngine,
+    EvaluationResult,
+    adapt_benchmark_artifact,
+)
 
 DATABASE_URL = os.environ.get(
     "OPSSENTINEL_DATABASE_URL",
