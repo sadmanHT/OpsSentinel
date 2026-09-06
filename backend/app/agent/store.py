@@ -10,6 +10,7 @@ from app.agent.models import AgentState
 from app.persistence.models import (
     AgentCheckpointRecord,
     AgentRunRecord,
+    ApprovalRecord,
     DiagnosisRecord,
     EvidenceRecord,
     HypothesisRecord,
@@ -135,6 +136,19 @@ class SqlAgentStore:
                         status=tool_call.status.value,
                         result_reference=tool_call.result_reference,
                         risk_level=tool_call.risk_level.value,
+                    )
+                )
+            if state.approval is not None:
+                approval = state.approval
+                session.merge(
+                    ApprovalRecord(
+                        id=str(approval.id),
+                        run_id=str(state.run_id),
+                        action=approval.action.model_dump(mode="json"),
+                        risk_level=approval.action.risk_level.value,
+                        decision=approval.decision.value,
+                        created_at=approval.created_at,
+                        decided_at=approval.decided_at,
                     )
                 )
             if state.final_diagnosis is not None:

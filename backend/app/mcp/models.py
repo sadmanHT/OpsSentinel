@@ -15,6 +15,8 @@ class ToolCategory(StrEnum):
     DEPLOYMENTS = "deployments"
     DOCUMENTATION = "documentation"
     DIAGNOSTICS = "diagnostics"
+    VERIFICATION = "verification"
+    OPERATIONS = "operations"
 
 
 class MetricName(StrEnum):
@@ -112,6 +114,11 @@ class ExecuteSqlArgs(StrictModel):
     max_rows: int = Field(default=50, ge=1, le=100)
 
 
+class ExplainAnalyzeArgs(StrictModel):
+    query: str = Field(min_length=1, max_length=20_000)
+    max_rows: int = Field(default=50, ge=1, le=100)
+
+
 class InspectDeploymentArgs(StrictModel):
     service: str = Field(min_length=1, max_length=80)
 
@@ -142,3 +149,23 @@ class RunDiagnosticArgs(StrictModel):
     service: str | None = Field(default=None, max_length=80)
     path: str | None = Field(default=None, max_length=240)
     test: str | None = Field(default=None, max_length=240)
+
+
+class RunTestsArgs(StrictModel):
+    test: str = Field(min_length=1, max_length=240)
+
+
+class ReproduceRequestArgs(StrictModel):
+    service: str = Field(min_length=1, max_length=80)
+    method: str = Field(default="GET", pattern=r"^(GET|POST)$")
+    path: str = Field(min_length=1, max_length=240, pattern=r"^/")
+    expected_status: int | None = Field(default=None, ge=100, le=599)
+
+
+class RerunLoadTestArgs(StrictModel):
+    profile: str = Field(default="normal", pattern=r"^(normal|burst|sustained)$")
+    path: str = Field(default="/checkout", pattern=r"^/")
+
+
+class SandboxServiceArgs(StrictModel):
+    service: str = Field(min_length=1, max_length=80)

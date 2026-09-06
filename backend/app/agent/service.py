@@ -7,17 +7,20 @@ from sqlalchemy import Engine
 from app.agent.models import (
     AgentBudget,
     AgentRunView,
+    ApprovalDecisionRequest,
     StartInvestigationRequest,
 )
+from app.agent.phase5_runtime import Phase5Runtime
 from app.agent.providers import (
     DeterministicReasoningProvider,
     OllamaReasoningProvider,
     ReasoningProvider,
 )
-from app.agent.runtime import AgentRuntime
+from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
+from app.mcp.retrying import RetryingToolRegistry
 from app.persistence.session import create_database_engine
 
 
@@ -31,15 +34,23 @@ class AgentService:
         provider: ReasoningProvider,
     ) -> None:
         self.settings = settings
-        self.provider = provider
+        self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
+            provider,
+            max_non_progress_steps=settings.max_non_progress_steps,
+        )
+        resilient_registry = RetryingToolRegistry(
+            registry,
+            max_retries=settings.max_tool_retries,
+            backoff_seconds=settings.tool_retry_backoff_seconds,
+        )
         self.store = SqlAgentStore(
             engine,
-            architecture_version=AgentRuntime.architecture_version,
-            model=provider.name,
+            architecture_version=Phase5Runtime.architecture_version,
+            model=self.provider.name,
         )
-        self.runtime = AgentRuntime(
-            registry=registry,
-            provider=provider,
+        self.runtime = Phase5Runtime(
+            registry=resilient_registry,
+            provider=self.provider,
             store=self.store,
         )
 
@@ -56,7 +67,7 @@ class AgentService:
     async def start(self, request: StartInvestigationRequest) -> AgentRunView:
         runtime = self.runtime
         if request.pause_after is not None:
-            runtime = AgentRuntime(
+            runtime = Phase5Runtime(
                 registry=self.runtime.registry,
                 provider=self.provider,
                 store=self.store,
@@ -65,11 +76,24 @@ class AgentService:
         state = await runtime.start(
             request.incident,
             request.budget or self.default_budget(),
+            operational_mode=request.operational_mode,
         )
         return AgentRunView.from_state(state)
 
     async def resume(self, run_id: UUID) -> AgentRunView:
         state = await self.runtime.resume(run_id)
+        return AgentRunView.from_state(state)
+
+    async def decide_approval(
+        self,
+        run_id: UUID,
+        request: ApprovalDecisionRequest,
+    ) -> AgentRunView:
+        state = await self.runtime.decide_approval(
+            run_id,
+            decision=request.decision,
+            actor=request.actor,
+        )
         return AgentRunView.from_state(state)
 
     def get(self, run_id: UUID) -> AgentRunView | None:

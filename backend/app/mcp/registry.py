@@ -16,12 +16,17 @@ from app.mcp.errors import (
 from app.mcp.models import (
     EvidenceEnvelope,
     ExecuteSqlArgs,
+    ExplainAnalyzeArgs,
     InspectCommitArgs,
     InspectDeploymentArgs,
     InspectGitDiffArgs,
     PermissionSet,
     QueryMetricsArgs,
+    ReproduceRequestArgs,
+    RerunLoadTestArgs,
     RunDiagnosticArgs,
+    RunTestsArgs,
+    SandboxServiceArgs,
     SearchCodeArgs,
     SearchDocumentationArgs,
     SearchLogsArgs,
@@ -31,6 +36,7 @@ from app.mcp.models import (
     ToolInvocation,
     ToolResponse,
 )
+from app.mcp.phase5_tools import Phase5Tools
 from app.mcp.policy import RiskPolicy, authorize_tool
 from app.mcp.registry_support import EmptyArgs
 from app.mcp.services import ServiceClient
@@ -149,9 +155,15 @@ def default_permissions() -> PermissionSet:
         "search_code",
         "search_documentation",
         "run_diagnostic",
+        "run_tests",
+        "reproduce_request",
+        "rerun_load_test",
+        "explain_analyze",
+        "restart_sandbox_service",
+        "rollback_sandbox_deployment",
     }
     return PermissionSet(
-        principal="phase4-agent",
+        principal="phase5-agent",
         allowed_tools=tools,
         allowed_services={"backend", "gateway", "checkout", "inventory", "payment", "worker"},
     )
@@ -166,6 +178,11 @@ def build_registry(
     resolved_settings = settings or get_settings()
     resolved_permissions = permissions or default_permissions()
     tools = InvestigationTools(
+        resolved_settings,
+        resolved_permissions,
+        service_client=service_client,
+    )
+    phase5_tools = Phase5Tools(
         resolved_settings,
         resolved_permissions,
         service_client=service_client,
@@ -273,6 +290,66 @@ def build_registry(
             RiskLevel.R1,
             RunDiagnosticArgs,
             tools.run_diagnostic,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "run_tests",
+            "Run an explicitly allowlisted deterministic backend test target.",
+            ToolCategory.VERIFICATION,
+            RiskLevel.R1,
+            RunTestsArgs,
+            phase5_tools.run_tests,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "reproduce_request",
+            "Reproduce one allowlisted sandbox request and compare its observed status.",
+            ToolCategory.VERIFICATION,
+            RiskLevel.R1,
+            ReproduceRequestArgs,
+            phase5_tools.reproduce_request,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "rerun_load_test",
+            "Rerun a bounded deterministic checkout load verification profile.",
+            ToolCategory.VERIFICATION,
+            RiskLevel.R1,
+            RerunLoadTestArgs,
+            phase5_tools.rerun_load_test,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "explain_analyze",
+            "Run EXPLAIN ANALYZE against a validated read-only SELECT query.",
+            ToolCategory.VERIFICATION,
+            RiskLevel.R1,
+            ExplainAnalyzeArgs,
+            phase5_tools.explain_analyze,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "restart_sandbox_service",
+            "Reset one allowlisted simulator service after explicit human approval.",
+            ToolCategory.OPERATIONS,
+            RiskLevel.R2,
+            SandboxServiceArgs,
+            phase5_tools.restart_sandbox_service,
+        )
+    )
+    registry.register(
+        RegisteredTool(
+            "rollback_sandbox_deployment",
+            "Restore one allowlisted simulator service to baseline after explicit human approval.",
+            ToolCategory.OPERATIONS,
+            RiskLevel.R2,
+            SandboxServiceArgs,
+            phase5_tools.rollback_sandbox_deployment,
         )
     )
     return registry

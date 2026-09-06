@@ -28,9 +28,13 @@ FAULT_TARGETS = {
 }
 
 
-def validate_fault_target(spec: FaultSpec) -> None:
-    if spec.service not in SERVICE_URLS:
+def validate_service(service: str) -> None:
+    if service not in SERVICE_URLS:
         raise HTTPException(status_code=422, detail="unknown service")
+
+
+def validate_fault_target(spec: FaultSpec) -> None:
+    validate_service(spec.service)
     if spec.service not in FAULT_TARGETS[spec.fault]:
         raise HTTPException(
             status_code=422,
@@ -60,15 +64,15 @@ async def reset_service(service: str) -> None:
         return
     try:
         async with httpx.AsyncClient(timeout=2) as client:
-            await client.post(f"{url}/internal/reset")
+            response = await client.post(f"{url}/internal/reset")
+            response.raise_for_status()
     except httpx.HTTPError:
         return
 
 
 @app.post("/faults/restore")
 async def restore_fault(request: RestoreRequest) -> dict[str, int | str]:
-    if request.service not in SERVICE_URLS:
-        raise HTTPException(status_code=422, detail="unknown service")
+    validate_service(request.service)
     removed = store.restore(request.service, request.fault)
     await reset_service(request.service)
     return {"status": "restored", "removed": removed}
@@ -79,3 +83,20 @@ async def restore_all() -> dict[str, int | str]:
     removed = store.restore_all()
     await asyncio.gather(*(reset_service(service) for service in SERVICE_URLS))
     return {"status": "restored", "removed": removed}
+
+
+@app.post("/operations/restart/{service}")
+async def restart_sandbox_service(service: str) -> dict[str, str]:
+    """Reset process-local simulator artifacts without exposing fault state."""
+    validate_service(service)
+    await reset_service(service)
+    return {"status": "completed", "operation": "restart", "service": service}
+
+
+@app.post("/operations/rollback/{service}")
+async def rollback_sandbox_deployment(service: str) -> dict[str, str]:
+    """Restore a service to baseline without returning hidden fault metadata."""
+    validate_service(service)
+    store.restore(service)
+    await reset_service(service)
+    return {"status": "completed", "operation": "rollback", "service": service}
