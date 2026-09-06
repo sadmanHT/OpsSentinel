@@ -14,7 +14,6 @@ from benchmarklab.models import (
     ScenarioSpec,
 )
 
-
 RELEASE_DIFFICULTY_COUNTS: dict[Difficulty, int] = {
     Difficulty.EASY: 10,
     Difficulty.MEDIUM: 12,
