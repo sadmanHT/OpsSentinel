@@ -19,8 +19,8 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 2 — ChaosLab Production Simulator:** cumulative gate passed and revalidated on `main`.
 - ✅ **Phase 3 — MCP Investigation Tooling and Safety Boundary:** cumulative gate passed.
 - ✅ **Phase 4 — First Autonomous Agent and Evidence-Driven Reasoning:** cumulative gate passed.
-- ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** implementation and closeout cumulative gate passed; see `docs/phase-5-handoff.md` for the final validation record and Phase 6 boundary.
-- 🚧 **Phase 6 — BenchmarkLab:** development may rely only on Phase 5 guarantees recorded in the handoff after final `main` revalidation.
+- ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
+- 🚧 **Phase 6 — BenchmarkLab:** may rely on the fully validated Phase 5 guarantees recorded in the handoff.
 - Phases 7–10 remain gated behind successful completion of all prior phases.
 
 ## Stack in use
