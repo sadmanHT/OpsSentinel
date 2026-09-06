@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Iterable, Sequence
 
 from evaluationlab.models import (
@@ -112,8 +111,8 @@ def score_efficiency(
     tool_calls: Sequence[ToolCallAssessment],
     steps_to_correct_hypothesis: int | None,
 ) -> EfficiencyMetrics:
-    signatures = Counter(call.signature for call in tool_calls)
-    duplicate_calls = sum(max(0, count - 1) for count in signatures.values())
+    unique_signatures = {call.signature for call in tool_calls}
+    duplicate_calls = len(tool_calls) - len(unique_signatures)
     useful = sum(call.utility == EvidenceUtility.DISCRIMINATIVE for call in tool_calls)
     irrelevant = sum(call.utility == EvidenceUtility.IRRELEVANT for call in tool_calls)
     misleading = sum(call.utility == EvidenceUtility.MISLEADING for call in tool_calls)
@@ -145,7 +144,7 @@ def brier_score(confidences: Sequence[float], outcomes: Sequence[float]) -> floa
         raise ValueError("outcomes must be in [0, 1]")
     return sum(
         (confidence - outcome) ** 2
-        for confidence, outcome in zip(confidences, outcomes)
+        for confidence, outcome in zip(confidences, outcomes, strict=True)
     ) / len(confidences)
 
 
@@ -164,7 +163,7 @@ def reliability_bins(
         raise ValueError("outcomes must be in [0, 1]")
 
     bucketed: list[list[tuple[float, float]]] = [[] for _ in range(n_bins)]
-    for confidence, outcome in zip(confidences, outcomes):
+    for confidence, outcome in zip(confidences, outcomes, strict=True):
         index = min(int(confidence * n_bins), n_bins - 1)
         bucketed[index].append((confidence, outcome))
 
