@@ -421,10 +421,11 @@ class DeterministicReasoningProvider:
     async def enough_evidence(self, state: AgentState) -> tuple[bool, ProviderUsage]:
         top = max((item.confidence for item in state.hypotheses), default=0.0)
         if top < 0.9:
-            all_done = bool(state.plan) and all(
-                step.completed for step in state.plan.steps if step.required
+            plan = state.plan
+            all_done = plan is not None and all(
+                step.completed for step in plan.steps if step.required
             )
-            return bool(all_done), ProviderUsage()
+            return all_done, ProviderUsage()
 
         text = f"{state.incident.title} {state.incident.description}".lower()
         if state.incident.service == "checkout" and any(

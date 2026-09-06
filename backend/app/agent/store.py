@@ -89,50 +89,52 @@ class SqlAgentStore:
                     status=state.status.value,
                 )
             )
-            for item in state.evidence:
+            for evidence in state.evidence:
                 session.merge(
                     EvidenceRecord(
-                        id=str(item.id),
-                        incident_id=str(item.incident_id),
+                        id=str(evidence.id),
+                        incident_id=str(evidence.incident_id),
                         run_id=str(state.run_id),
-                        source=item.source,
-                        evidence_type=item.evidence_type.value,
-                        service=item.service,
-                        timestamp=item.timestamp,
-                        observation=item.observation,
-                        raw_reference=item.raw_reference,
-                        reliability=item.reliability,
+                        source=evidence.source,
+                        evidence_type=evidence.evidence_type.value,
+                        service=evidence.service,
+                        timestamp=evidence.timestamp,
+                        observation=evidence.observation,
+                        raw_reference=evidence.raw_reference,
+                        reliability=evidence.reliability,
                     )
                 )
-            for item in state.hypotheses:
+            for hypothesis in state.hypotheses:
                 session.merge(
                     HypothesisRecord(
-                        id=str(item.id),
+                        id=str(hypothesis.id),
                         run_id=str(state.run_id),
-                        description=item.description,
-                        root_cause_code=item.root_cause_code,
-                        confidence=item.confidence,
-                        supporting_evidence=[str(value) for value in item.supporting_evidence],
-                        contradicting_evidence=[
-                            str(value) for value in item.contradicting_evidence
+                        description=hypothesis.description,
+                        root_cause_code=hypothesis.root_cause_code,
+                        confidence=hypothesis.confidence,
+                        supporting_evidence=[
+                            str(value) for value in hypothesis.supporting_evidence
                         ],
-                        first_possible_cause_time=item.first_possible_cause_time,
-                        effect_time=item.effect_time,
-                        status=item.status.value,
+                        contradicting_evidence=[
+                            str(value) for value in hypothesis.contradicting_evidence
+                        ],
+                        first_possible_cause_time=hypothesis.first_possible_cause_time,
+                        effect_time=hypothesis.effect_time,
+                        status=hypothesis.status.value,
                     )
                 )
-            for item in state.tool_history:
+            for tool_call in state.tool_history:
                 session.merge(
                     ToolCallRecord(
-                        id=str(item.id),
+                        id=str(tool_call.id),
                         run_id=str(state.run_id),
-                        tool_name=item.tool_name,
-                        arguments=item.arguments,
-                        started_at=item.started_at,
-                        completed_at=item.completed_at,
-                        status=item.status.value,
-                        result_reference=item.result_reference,
-                        risk_level=item.risk_level.value,
+                        tool_name=tool_call.tool_name,
+                        arguments=tool_call.arguments,
+                        started_at=tool_call.started_at,
+                        completed_at=tool_call.completed_at,
+                        status=tool_call.status.value,
+                        result_reference=tool_call.result_reference,
+                        risk_level=tool_call.risk_level.value,
                     )
                 )
             if state.final_diagnosis is not None:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import Any, TypedDict
+from collections.abc import Awaitable, Callable, Hashable, Sequence
+from typing import Any, TypedDict, cast
 from uuid import UUID, uuid4
 
 from langgraph.graph import END, START, StateGraph
@@ -36,6 +36,9 @@ class GraphPayload(TypedDict):
     state: AgentState
 
 
+GraphNode = Callable[[GraphPayload], Awaitable[GraphPayload]]
+
+
 class AgentRuntime:
     architecture_version = "phase4-single-agent-v1"
 
@@ -55,18 +58,24 @@ class AgentRuntime:
 
     def _build_graph(self, interrupt_after: Sequence[AgentNode] | None) -> Any:
         builder = StateGraph(GraphPayload)
-        builder.add_node(AgentNode.TRIAGE.value, self._triage)
-        builder.add_node(AgentNode.PLAN.value, self._plan)
-        builder.add_node(AgentNode.SELECT_TOOL.value, self._select_tool)
-        builder.add_node(AgentNode.EXECUTE_TOOL.value, self._execute_tool)
-        builder.add_node(AgentNode.STORE_EVIDENCE.value, self._store_evidence)
-        builder.add_node(AgentNode.UPDATE_HYPOTHESIS.value, self._update_hypothesis)
-        builder.add_node(AgentNode.ENOUGH_EVIDENCE.value, self._enough_evidence)
-        builder.add_node(AgentNode.DIAGNOSE.value, self._diagnose)
-        builder.add_node(AgentNode.RECOMMEND.value, self._recommend)
-        builder.add_node(AgentNode.REPORT.value, self._report)
 
-        entry_mapping: dict[str, Any] = {
+        def add_node(node: AgentNode, action: GraphNode) -> None:
+            # LangGraph's overloads do not currently accept async bound methods cleanly
+            # under strict mypy, so contain the third-party typing gap at this boundary.
+            builder.add_node(node.value, cast(Any, action))
+
+        add_node(AgentNode.TRIAGE, self._triage)
+        add_node(AgentNode.PLAN, self._plan)
+        add_node(AgentNode.SELECT_TOOL, self._select_tool)
+        add_node(AgentNode.EXECUTE_TOOL, self._execute_tool)
+        add_node(AgentNode.STORE_EVIDENCE, self._store_evidence)
+        add_node(AgentNode.UPDATE_HYPOTHESIS, self._update_hypothesis)
+        add_node(AgentNode.ENOUGH_EVIDENCE, self._enough_evidence)
+        add_node(AgentNode.DIAGNOSE, self._diagnose)
+        add_node(AgentNode.RECOMMEND, self._recommend)
+        add_node(AgentNode.REPORT, self._report)
+
+        entry_mapping: dict[Hashable, str] = {
             node.value: node.value for node in AgentNode if node not in {AgentNode.END}
         }
         entry_mapping[AgentNode.END.value] = END
@@ -345,7 +354,8 @@ class AgentRuntime:
             return self._checkpoint(state, AgentNode.REPORT)
         if not self._apply_usage(state, usage):
             return self._checkpoint(state, AgentNode.REPORT)
-        no_remaining_steps = bool(state.plan) and all(item.completed for item in state.plan.steps)
+        plan = state.plan
+        no_remaining_steps = plan is not None and all(item.completed for item in plan.steps)
         if enough or no_remaining_steps:
             return self._checkpoint(state, AgentNode.DIAGNOSE)
         reason = self._budget_reason(state)
