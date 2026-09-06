@@ -48,6 +48,14 @@ def _records() -> tuple[list[object], list[TrialRecord]]:
         for scenario in scenarios:
             no_fault = scenario.scenario_id == "ops-v1-040"
             false_positive = no_fault and budget == 5
+            expected_root_cause = "NO_FAULT" if no_fault else "N_PLUS_ONE"
+            if false_positive:
+                predicted_root_cause = "N_PLUS_ONE"
+            elif no_fault:
+                predicted_root_cause = "NO_FAULT"
+            else:
+                predicted_root_cause = "N_PLUS_ONE"
+            budget_exhausted = budget == 5 and scenario.scenario_id == "ops-v1-021"
             identity = make_trial_identity(plan, cell, scenario, 0)
             records.append(
                 TrialRecord(
@@ -55,11 +63,9 @@ def _records() -> tuple[list[object], list[TrialRecord]]:
                     status=TrialStatus.COMPLETED,
                     raw_trajectory={
                         "evaluation_case": {
-                            "expected_primary_root_cause_code": "NO_FAULT" if no_fault else "N_PLUS_ONE",
-                            "predicted_primary_root_cause_code": (
-                                "N_PLUS_ONE" if false_positive else ("NO_FAULT" if no_fault else "N_PLUS_ONE")
-                            ),
-                            "budget_exhausted": budget == 5 and scenario.scenario_id == "ops-v1-021",
+                            "expected_primary_root_cause_code": expected_root_cause,
+                            "predicted_primary_root_cause_code": predicted_root_cause,
+                            "budget_exhausted": budget_exhausted,
                         },
                         "evaluation_result": {
                             "evidence": {"distractor_selection_rate": budget / 100.0},
