@@ -96,6 +96,43 @@ jobs:
           python -c "from chaoslab.models import FaultSpec, FaultType; assert FaultSpec(fault=FaultType.N_PLUS_ONE, service='checkout').seed == 42"
           python -c "from chaoslab.loadgen import PROFILES; assert {'normal','burst','sustained'} <= set(PROFILES)"
 
+  benchmarklab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: benchmarklab/pyproject.toml
+      - name: Install BenchmarkLab
+        run: python -m pip install -e 'benchmarklab[dev]'
+      - name: Ruff
+        run: ruff check benchmarklab scripts/phase6-benchmark-smoke.py
+      - name: Mypy
+        run: mypy benchmarklab/benchmarklab
+      - name: Unit and integrity tests
+        run: pytest benchmarklab/tests
+      - name: Catalog smoke
+        working-directory: benchmarklab
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from benchmarklab import load_catalog
+          from benchmarklab.models import Difficulty
+
+          catalog = load_catalog()
+          assert len(catalog.scenarios) == 50
+          assert Counter(item.difficulty for item in catalog.scenarios) == {
+              Difficulty.EASY: 10,
+              Difficulty.MEDIUM: 12,
+              Difficulty.HARD: 12,
+              Difficulty.ADVERSARIAL: 8,
+              Difficulty.COMPOUND: 8,
+          }
+          print(catalog.benchmark_version, len(catalog.scenarios))
+          PY
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -114,6 +151,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: benchmarklab/pyproject.toml
+      - name: Install BenchmarkLab runtime
+        run: python -m pip install -e benchmarklab
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config >/dev/null
@@ -163,6 +207,7 @@ jobs:
           python scripts/phase5-operational-smoke.py
           python scripts/phase5-approval-negative-smoke.py
           python scripts/phase5-rejected-matrix-smoke.py
+          python scripts/phase6-benchmark-smoke.py
 
           checkpoint_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM agent_checkpoints;")
@@ -185,6 +230,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
           curl --fail --silent http://127.0.0.1:8000/mcp/tools | grep search_logs
           curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase5-safe-operational-agent-v1
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
 
           docker compose ps
           docker compose logs backend --no-color > /tmp/opssentinel-backend.log
