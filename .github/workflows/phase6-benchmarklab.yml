@@ -19,7 +19,7 @@ jobs:
       - name: Install BenchmarkLab
         run: python -m pip install -e 'benchmarklab[dev]'
       - name: Ruff
-        run: ruff check benchmarklab
+        run: ruff check benchmarklab scripts/phase6-benchmark-smoke.py
       - name: Mypy
         run: mypy benchmarklab/benchmarklab
       - name: Unit and integrity tests
@@ -43,3 +43,68 @@ jobs:
           }
           print(catalog.benchmark_version, len(catalog.scenarios))
           PY
+
+  live-benchmarklab:
+    needs: benchmarklab
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: benchmarklab/pyproject.toml
+      - name: Install BenchmarkLab
+        run: python -m pip install -e benchmarklab
+      - name: Build clean Compose environment
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose build
+          docker compose up -d
+      - name: Wait for full-stack health
+        run: |
+          set -euo pipefail
+          healthy=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+      - name: Representative live scenario validity gate
+        run: python scripts/phase6-benchmark-smoke.py
+      - name: Verify final restoration and inspect logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend --no-color > /tmp/phase6-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway --no-color \
+            > /tmp/phase6-chaoslab.log
+          if grep -E 'Traceback|Unhandled exception|CRITICAL' /tmp/phase6-backend.log; then
+            cat /tmp/phase6-backend.log
+            exit 1
+          fi
+          if grep -E 'Traceback|Unhandled exception|CRITICAL' /tmp/phase6-chaoslab.log; then
+            cat /tmp/phase6-chaoslab.log
+            exit 1
+          fi
+          docker compose ps
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color || true
+      - name: Tear down live benchmark environment
+        if: always()
+        run: docker compose down -v --remove-orphans || true
