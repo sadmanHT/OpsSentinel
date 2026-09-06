@@ -1,5 +1,5 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 import psycopg
 from psycopg import Connection
@@ -68,7 +68,10 @@ class SimulatorDatabase:
                     for product_id in range(1, 5):
                         items.append((order_id, product_id, 1 + ((order_id + product_id) % 2)))
                 cur.executemany(
-                    "INSERT INTO sim_order_items (order_id, product_id, quantity) VALUES (%s, %s, %s)",
+                    (
+                        "INSERT INTO sim_order_items (order_id, product_id, quantity) "
+                        "VALUES (%s, %s, %s)"
+                    ),
                     items,
                 )
             conn.commit()
@@ -109,7 +112,10 @@ class SimulatorDatabase:
             orders = []
             for order_id, customer in cur.fetchall():
                 cur.execute(
-                    "SELECT product_id, quantity FROM sim_order_items WHERE order_id = %s ORDER BY id",
+                    (
+                        "SELECT product_id, quantity FROM sim_order_items "
+                        "WHERE order_id = %s ORDER BY id"
+                    ),
                     (order_id,),
                 )
                 query_count += 1
