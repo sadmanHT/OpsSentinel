@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     agent_time_limit_seconds: float = Field(default=120.0, ge=1.0, le=3600.0)
     agent_token_budget: int = Field(default=32_000, ge=0, le=10_000_000)
     agent_cost_budget: float = Field(default=0.0, ge=0.0, le=10_000.0)
+    max_tool_retries: int = Field(default=2, ge=0, le=10)
+    tool_retry_backoff_seconds: float = Field(default=0.05, ge=0.0, le=10.0)
+    max_non_progress_steps: int = Field(default=3, ge=1, le=20)
     random_seed: int = 42
     langfuse_enabled: bool = False
     langfuse_host: str = "http://localhost:3000"
@@ -49,6 +52,7 @@ class Settings(BaseSettings):
     mcp_inventory_url: str = "http://localhost:8102"
     mcp_payment_url: str = "http://localhost:8103"
     mcp_worker_url: str = "http://localhost:8104"
+    sandbox_actuator_url: str = "http://chaoslab-controller:8080"
 
 
 @lru_cache(maxsize=1)
