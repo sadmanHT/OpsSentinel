@@ -157,6 +157,39 @@ async def launch_and_validate(
     return evidence
 
 
+async def validate_live_agent_run(
+    runner: BenchmarkRunner,
+    scenario: ScenarioSpec,
+    benchmark_version: str,
+) -> None:
+    assert_public_boundary(scenario)
+    artifact = await runner.run(scenario, benchmark_version=benchmark_version)
+
+    assert artifact.scenario_id == scenario.scenario_id
+    assert artifact.agent_run_id is not None
+    assert artifact.agent_status == "completed"
+    assert artifact.diagnosis_code == "n_plus_one_query"
+    assert artifact.confidence is not None and artifact.confidence >= 0.9
+    assert artifact.tool_call_count > 0
+    assert artifact.expected_primary_root_cause_code == "n_plus_one_query"
+    assert artifact.expected_secondary_root_cause_codes == []
+
+    agent_run = artifact.raw_agent_run
+    assert agent_run["status"] == "completed", agent_run
+    assert agent_run["next_node"] == "end", agent_run
+    assert agent_run["diagnosis_code"] == "n_plus_one_query", agent_run
+    final_diagnosis = agent_run["final_diagnosis"]
+    assert final_diagnosis is not None, agent_run
+    assert float(final_diagnosis["confidence"]) >= 0.9, final_diagnosis
+    assert final_diagnosis["evidence_ids"], final_diagnosis
+    report = agent_run["report"]
+    assert report is not None, agent_run
+    assert report["root_cause_code"] == "n_plus_one_query", report
+    assert report["claims"], report
+
+    assert_restored()
+
+
 async def main() -> None:
     catalog = load_catalog()
     validate_release_catalog(catalog)
@@ -173,6 +206,9 @@ async def main() -> None:
     assert isinstance(first_signature, tuple)
     assert isinstance(second_signature, tuple)
     assert first_signature[0] == second_signature[0]
+
+    # The benchmark runner must also drive the real autonomous agent without label leakage.
+    await validate_live_agent_run(runner, easy, catalog.benchmark_version)
 
     # Medium: connection leak with realistic distractor metadata.
     medium = scenario_by_id(catalog, "ops-v1-012")
@@ -222,8 +258,8 @@ async def main() -> None:
     assert_restored()
 
     print(
-        "Phase 6 live BenchmarkLab smoke passed: easy, medium, hard, adversarial, "
-        "counterfactual, compound, reproducibility, restoration"
+        "Phase 6 live BenchmarkLab smoke passed: easy, live-agent, medium, hard, "
+        "adversarial, counterfactual, compound, reproducibility, restoration"
     )
 
 
