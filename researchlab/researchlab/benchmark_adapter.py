@@ -12,10 +12,17 @@ class EnumValue(Protocol):
 
 
 class BenchmarkScenarioMetadata(Protocol):
-    scenario_id: str
-    scenario_version: str
-    split: EnumValue
-    difficulty: EnumValue
+    @property
+    def scenario_id(self) -> str: ...
+
+    @property
+    def scenario_version(self) -> str: ...
+
+    @property
+    def split(self) -> EnumValue: ...
+
+    @property
+    def difficulty(self) -> EnumValue: ...
 
 
 def scenario_ref_from_benchmark(scenario: BenchmarkScenarioMetadata) -> ScenarioRef:
