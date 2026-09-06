@@ -5,8 +5,6 @@ import json
 import os
 
 import httpx
-from sqlalchemy import Engine, create_engine, text
-
 from benchmarklab.catalog import load_catalog
 from benchmarklab.runner import BenchmarkRunner
 from evaluationlab.persistence import SqlEvaluationStore
@@ -27,6 +25,7 @@ from researchlab.models import (
 )
 from researchlab.persistence import SqlTrialStore
 from researchlab.runner import ExperimentRunner
+from sqlalchemy import Engine, create_engine, text
 
 DATABASE_URL = os.environ.get(
     "OPSSENTINEL_DATABASE_URL",
@@ -80,7 +79,7 @@ async def _active_faults() -> list[object]:
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, list):
-        raise AssertionError("ChaosLab fault listing is malformed")
+        raise TypeError("ChaosLab fault listing is malformed")
     return payload
 
 
