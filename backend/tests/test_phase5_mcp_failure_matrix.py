@@ -14,7 +14,6 @@ from app.mcp.registry_support import EmptyArgs
 from app.mcp.retrying import RetryingToolRegistry
 from app.models.domain import EvidenceType, RiskLevel, ToolCallStatus
 
-
 MAJOR_TOOLS = [
     ("search_logs", RiskLevel.R0),
     ("query_metrics", RiskLevel.R0),
