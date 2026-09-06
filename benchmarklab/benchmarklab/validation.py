@@ -10,6 +10,7 @@ from benchmarklab.models import (
     BenchmarkCatalog,
     BenchmarkSplit,
     Difficulty,
+    FaultKind,
     ScenarioKind,
     ScenarioSpec,
 )
@@ -27,6 +28,15 @@ RELEASE_SPLIT_COUNTS: dict[BenchmarkSplit, int] = {
     BenchmarkSplit.VALIDATION: 10,
     BenchmarkSplit.HIDDEN_TEST: 10,
 }
+
+REQUIRED_EVIDENCE_BY_FAULT: dict[FaultKind, set[str]] = {
+    FaultKind.N_PLUS_ONE: {"metric:p95_latency", "metric:db_query_count"},
+    FaultKind.CONNECTION_LEAK: {"metric:db_connections", "log:inventory_503"},
+    FaultKind.DISK_EXHAUSTION: {"metric:disk_usage", "log:worker_507"},
+    FaultKind.BROKEN_CONFIG: {"log:payment_401", "log:gateway_502"},
+    FaultKind.MEMORY_LEAK: {"metric:memory_usage", "metric:container_restarts"},
+}
+NO_FAULT_EVIDENCE = {"metric:healthy_baseline", "log:no_errors"}
 
 
 class CatalogValidationError(ValueError):
@@ -140,6 +150,21 @@ def validate_reproducibility_metadata(catalog: BenchmarkCatalog) -> None:
             raise CatalogValidationError(f"missing scenario version in {scenario.scenario_id}")
 
 
+def validate_evidence_contract(scenario: ScenarioSpec) -> None:
+    declared = set(scenario.ground_truth.critical_evidence_tags)
+    if not scenario.faults:
+        missing = NO_FAULT_EVIDENCE - declared
+    else:
+        required: set[str] = set()
+        for fault in scenario.faults:
+            required.update(REQUIRED_EVIDENCE_BY_FAULT[fault.fault])
+        missing = required - declared
+    if missing:
+        raise CatalogValidationError(
+            f"{scenario.scenario_id} is missing required evidence tags: {sorted(missing)}"
+        )
+
+
 def validate_scenario_runtime_contract(scenario: ScenarioSpec) -> None:
     if scenario.faults and not scenario.stimuli:
         raise CatalogValidationError(
@@ -166,6 +191,7 @@ def validate_scenario_runtime_contract(scenario: ScenarioSpec) -> None:
             raise CatalogValidationError(
                 f"compound scenario {scenario.scenario_id} requires secondary root cause"
             )
+    validate_evidence_contract(scenario)
     validate_timeline(scenario)
 
 
