@@ -32,12 +32,17 @@ class AgentNode(StrEnum):
     ENOUGH_EVIDENCE = "enough_evidence"
     DIAGNOSE = "diagnose"
     RECOMMEND = "recommend"
+    REPORT = "report"
+    END = "end"
+
+
+class OperationStage(StrEnum):
+    NONE = "none"
     ASSESS_ACTION = "assess_action"
     WAIT_APPROVAL = "wait_approval"
     EXECUTE_ACTION = "execute_action"
     VERIFY = "verify"
-    REPORT = "report"
-    END = "end"
+    COMPLETE = "complete"
 
 
 class ApprovalDecision(StrEnum):
@@ -171,6 +176,7 @@ class AgentState(StrictModel):
     status: AgentRunStatus = AgentRunStatus.CREATED
     next_node: AgentNode = AgentNode.TRIAGE
     operational_mode: bool = False
+    operation_stage: OperationStage = OperationStage.NONE
     plan: InvestigationPlan | None = None
     evidence: list[Evidence] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(default_factory=list)
@@ -216,6 +222,7 @@ class AgentRunView(StrictModel):
     status: AgentRunStatus
     next_node: AgentNode
     operational_mode: bool
+    operation_stage: OperationStage
     plan: InvestigationPlan | None
     evidence: list[Evidence]
     hypotheses: list[Hypothesis]
@@ -239,6 +246,7 @@ class AgentRunView(StrictModel):
             status=state.status,
             next_node=state.next_node,
             operational_mode=state.operational_mode,
+            operation_stage=state.operation_stage,
             plan=state.plan,
             evidence=state.evidence,
             hypotheses=state.hypotheses,
