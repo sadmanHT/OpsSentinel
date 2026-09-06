@@ -20,7 +20,7 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 3 — MCP Investigation Tooling and Safety Boundary:** cumulative gate passed.
 - ✅ **Phase 4 — First Autonomous Agent and Evidence-Driven Reasoning:** cumulative gate passed.
 - ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
-- 🚧 **Phase 6 — BenchmarkLab:** implementation and branch-level Phase 1–6 cumulative code gates are green; documentation-inclusive validation, PR #8 merge, and post-merge `main` revalidation are still required before full closure. See `docs/phase-6-handoff.md`.
+- ✅ **Phase 6 — BenchmarkLab:** implementation, documentation-inclusive branch gates, PR #8 merge, and the complete post-merge Phase 1–6 cumulative gate passed on `main`. This final status-only commit must also retain green CI before Phase 7 work begins. See `docs/phase-6-handoff.md`.
 - Phases 7–10 remain gated behind successful completion of all prior phases.
 
 ## Stack in use
