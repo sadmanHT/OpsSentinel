@@ -138,36 +138,43 @@ class BenchmarkRunner:
     async def launch(self, scenario: ScenarioSpec) -> ScenarioLaunchRecord:
         """Launch one scenario without starting the agent.
 
-        The caller owns cleanup and should call ``restore`` when finished.
+        Successful launches keep faults active so evaluators can inspect evidence. Any failed
+        launch restores ChaosLab before re-raising the failure.
         """
         await self.restore()
-        events: list[tuple[float, str, int]] = []
-        events.extend(
-            (fault.offset_seconds, "fault", index)
-            for index, fault in enumerate(scenario.faults)
-        )
-        events.extend(
-            (stimulus.offset_seconds, "stimulus", index)
-            for index, stimulus in enumerate(scenario.stimuli)
-        )
-        events.sort(key=lambda item: (item[0], 0 if item[1] == "fault" else 1, item[2]))
+        try:
+            events: list[tuple[float, str, int]] = []
+            events.extend(
+                (fault.offset_seconds, "fault", index)
+                for index, fault in enumerate(scenario.faults)
+            )
+            events.extend(
+                (stimulus.offset_seconds, "stimulus", index)
+                for index, stimulus in enumerate(scenario.stimuli)
+            )
+            events.sort(
+                key=lambda item: (item[0], 0 if item[1] == "fault" else 1, item[2])
+            )
 
-        previous_offset = 0.0
-        statuses: list[int] = []
-        for offset, event_type, index in events:
-            await self._sleep_to_offset(previous_offset, offset)
-            if event_type == "fault":
-                await self._inject_fault(scenario, index)
-            else:
-                statuses.append(await self._run_stimulus(scenario, index))
-            previous_offset = offset
+            previous_offset = 0.0
+            statuses: list[int] = []
+            for offset, event_type, index in events:
+                await self._sleep_to_offset(previous_offset, offset)
+                if event_type == "fault":
+                    await self._inject_fault(scenario, index)
+                else:
+                    statuses.append(await self._run_stimulus(scenario, index))
+                previous_offset = offset
 
-        return ScenarioLaunchRecord(
-            scenario_id=scenario.scenario_id,
-            injected_fault_count=len(scenario.faults),
-            stimulus_count=len(scenario.stimuli),
-            final_statuses=statuses,
-        )
+            return ScenarioLaunchRecord(
+                scenario_id=scenario.scenario_id,
+                injected_fault_count=len(scenario.faults),
+                stimulus_count=len(scenario.stimuli),
+                final_statuses=statuses,
+            )
+        except Exception:
+            await self.restore()
+            raise
 
     async def _start_agent(self, scenario: ScenarioSpec) -> dict[str, Any]:
         payload = {
