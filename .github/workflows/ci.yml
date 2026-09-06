@@ -35,7 +35,10 @@ jobs:
     env:
       OPSSENTINEL_ENVIRONMENT: test
       OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@localhost:5432/opssentinel_test
+      OPSSENTINEL_MCP_DATABASE_URL: postgresql://opssentinel_reader:opssentinel_readonly@localhost:5432/opssentinel_test
       OPSSENTINEL_REDIS_URL: redis://localhost:6379/0
+      OPSSENTINEL_MCP_REPO_ROOT: ${{ github.workspace }}
+      OPSSENTINEL_MCP_DOCS_ROOT: ${{ github.workspace }}/docs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -51,9 +54,11 @@ jobs:
         run: mypy backend/app
       - name: Unit tests
         run: pytest backend/tests -m 'not integration'
-      - name: Backend import/startup smoke test
-        run: python -c "from app.main import app; assert app.title == 'OpsSentinel API'"
+      - name: Backend and MCP import/startup smoke test
         working-directory: backend
+        run: |
+          python -c "from app.main import app; assert app.title == 'OpsSentinel API'"
+          python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 10"
       - name: Migration upgrade
         run: alembic upgrade head
         working-directory: backend
@@ -121,6 +126,7 @@ jobs:
           healthy=0
           for attempt in $(seq 1 45); do
             if curl --fail --silent http://127.0.0.1:8000/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8000/mcp/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
@@ -141,11 +147,13 @@ jobs:
           fi
 
           curl --fail --show-error http://127.0.0.1:8000/health
+          curl --fail --show-error http://127.0.0.1:8000/mcp/health
           docker compose exec -T postgres psql -U opssentinel -d opssentinel \
             -c "SELECT to_regclass('public.incidents') AS incidents_table;" \
             | grep incidents
 
           python scripts/phase2-smoke.py
+          python scripts/phase3-mcp-smoke.py
 
           docker compose exec -T gateway python - <<'PY'
           import asyncio
@@ -159,6 +167,7 @@ jobs:
 
           curl --fail --silent http://127.0.0.1:8101/metrics | grep chaoslab_db_queries_last_request
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
+          curl --fail --silent http://127.0.0.1:8000/mcp/tools | grep search_logs
 
           docker compose ps
           docker compose logs backend --no-color > /tmp/opssentinel-backend.log

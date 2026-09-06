@@ -3,6 +3,11 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl git procps \
+    && git config --system --add safe.directory /workspace \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app/backend
 
 COPY pyproject.toml alembic.ini ./

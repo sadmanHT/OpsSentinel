@@ -1,13 +1,22 @@
 import asyncio
+import time
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Annotated
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 
 from chaoslab.config import ChaosConfig
 from chaoslab.database import SimulatorDatabase
 from chaoslab.effects import apply_pre_request_faults, disk_usage_ratio
-from chaoslab.models import FaultState, FaultType, ServiceSnapshot
+from chaoslab.models import (
+    FaultState,
+    FaultType,
+    ObservableLogRecord,
+    ObservableMetric,
+    ServiceSnapshot,
+)
 from chaoslab.runtime import RuntimeState
 from chaoslab.state import FaultStore
 from chaoslab.telemetry import Telemetry
@@ -64,6 +73,83 @@ def observable_snapshot() -> ServiceSnapshot:
         simulated_disk_usage_ratio=disk_usage_ratio(faults, runtime),
         simulated_memory_leak_bytes=runtime.simulated_memory_leak_bytes,
         simulated_restarts=runtime.simulated_restarts,
+    )
+
+
+@app.get("/observability/logs", response_model=list[ObservableLogRecord])
+def observable_logs(
+    query: Annotated[str | None, Query(max_length=200)] = None,
+    level: Annotated[
+        str | None,
+        Query(pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"),
+    ] = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[ObservableLogRecord]:
+    return telemetry.search_logs(
+        query=query,
+        level=level,
+        start_time=start_time,
+        end_time=end_time,
+        limit=limit,
+    )
+
+
+@app.get("/observability/metrics", response_model=ObservableMetric)
+def observable_metric(
+    metric: str,
+    aggregation: Annotated[
+        str,
+        Query(pattern=r"^(latest|avg|min|max|sum)$"),
+    ] = "latest",
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+) -> ObservableMetric:
+    request_metrics = {"request_rate", "error_rate", "p50_latency", "p95_latency"}
+    if metric in request_metrics:
+        value, sample_count, unit = telemetry.request_metric(
+            metric,
+            start_time=start_time,
+            end_time=end_time,
+        )
+    elif metric == "cpu_usage":
+        elapsed = max(time.monotonic() - telemetry.started_monotonic, 0.001)
+        value = (time.process_time() / elapsed) * 100.0
+        sample_count = 1
+        unit = "percent"
+    elif metric == "memory_usage":
+        value = float(runtime.simulated_memory_leak_bytes)
+        sample_count = 1
+        unit = "bytes"
+    elif metric == "disk_usage":
+        value = float(disk_usage_ratio(active_faults(), runtime))
+        sample_count = 1
+        unit = "ratio"
+    elif metric == "db_connections":
+        value = float(runtime.simulated_db_connections)
+        sample_count = 1
+        unit = "connections"
+    elif metric == "db_query_count":
+        value = float(runtime.db_query_count_last_request)
+        sample_count = 1
+        unit = "queries"
+    elif metric == "container_restarts":
+        value = float(runtime.simulated_restarts)
+        sample_count = 1
+        unit = "restarts"
+    else:
+        raise HTTPException(status_code=422, detail="unsupported metric")
+
+    return ObservableMetric(
+        metric=metric,
+        service=config.service_name,
+        value=value,
+        unit=unit,
+        aggregation=aggregation,
+        sample_count=sample_count,
+        start_time=start_time,
+        end_time=end_time,
     )
 
 
