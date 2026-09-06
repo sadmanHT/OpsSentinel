@@ -85,7 +85,7 @@ def build_reasoning_provider(settings: Settings) -> ReasoningProvider:
         return DeterministicReasoningProvider()
     if provider in {"local", "ollama"}:
         return OllamaReasoningProvider(
-            base_url=settings.ollama_base_url,
+            base_url=settings.local_model_base_url,
             model=settings.llm_model,
             timeout_seconds=settings.llm_timeout_seconds,
         )
