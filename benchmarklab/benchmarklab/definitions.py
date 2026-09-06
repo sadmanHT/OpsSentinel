@@ -183,7 +183,10 @@ def _no_fault_counterfactual(index: int) -> dict[str, Any]:
         "seed": 10_000 + index,
         "public_incident": {
             "title": "Control window remains healthy after a visible release",
-            "description": "A release occurs, but the scheduled trigger is disabled and no failure follows.",
+            "description": (
+                "A release occurs, but the scheduled trigger is disabled "
+                "and no failure follows."
+            ),
             "severity": "P2",
             "service": "inventory",
             "start_time": _time(index),
@@ -289,7 +292,10 @@ def _compound(index: int, primary: str, secondary: str) -> dict[str, Any]:
                 "The later fault is the primary acute cause; the earlier fault is genuine "
                 "but secondary."
             ),
-            "critical_evidence_tags": [*FAULTS[primary]["evidence"], *FAULTS[secondary]["evidence"]],
+            "critical_evidence_tags": [
+                *FAULTS[primary]["evidence"],
+                *FAULTS[secondary]["evidence"],
+            ],
         },
         "distractor_tags": ["dual_failure_overlap"],
         "budget": {"max_steps": 30, "max_tool_calls": 24, "time_limit_seconds": 240.0},
