@@ -1,7 +1,6 @@
 from benchmarklab.catalog import load_catalog
-
 from researchlab.benchmark_adapter import scenario_refs_from_benchmark
-from researchlab.models import ExperimentKind, ExperimentSplit, MAX_DATABASE_SEED
+from researchlab.models import MAX_DATABASE_SEED, ExperimentKind, ExperimentSplit
 from researchlab.plans import build_phase8_plans
 from researchlab.runner import ExperimentRunner
 
