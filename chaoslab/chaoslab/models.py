@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
@@ -50,3 +51,26 @@ class ServiceSnapshot(StrictModel):
     simulated_disk_usage_ratio: float
     simulated_memory_leak_bytes: int
     simulated_restarts: int
+
+
+class ObservableLogRecord(StrictModel):
+    timestamp: datetime
+    level: str
+    event: str
+    service: str
+    method: str
+    path: str
+    status: int
+    latency_ms: float
+    db_queries: int
+
+
+class ObservableMetric(StrictModel):
+    metric: str
+    service: str
+    value: float
+    unit: str
+    aggregation: str
+    sample_count: int = 0
+    start_time: datetime | None = None
+    end_time: datetime | None = None
