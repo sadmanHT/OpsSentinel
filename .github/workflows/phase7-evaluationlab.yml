@@ -22,6 +22,7 @@ jobs:
         run: >-
           ruff check evaluationlab scripts/phase7-evaluation-smoke.py
           scripts/phase7-representative-evaluation-smoke.py
+          scripts/phase7-counterfactual-evaluation-smoke.py
       - name: Mypy
         run: mypy evaluationlab/evaluationlab
       - name: Known-answer metric tests
