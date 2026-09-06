@@ -18,6 +18,9 @@ DATABASE_URL = os.environ.get(
     "OPSSENTINEL_DATABASE_URL",
     "postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel",
 )
+EVALUATION_PROVIDER = os.environ.get("OPSSENTINEL_EVALUATION_PROVIDER", "local")
+EVALUATION_MODEL = os.environ.get("OPSSENTINEL_EVALUATION_MODEL", "local-placeholder")
+ARCHITECTURE_VERSION = "phase5-safe-operational-agent-v1"
 
 
 async def main() -> None:
@@ -58,18 +61,19 @@ async def main() -> None:
     run = EvaluationRunMetadata(
         id=evaluation_run_id,
         dataset_version=catalog.benchmark_version,
-        architecture_version="phase5-safe-operational-agent-v1",
-        model="deterministic",
-        seed=42,
+        architecture_version=ARCHITECTURE_VERSION,
+        model=EVALUATION_MODEL,
+        seed=scenario.seed,
         configuration={
             "source": "phase7-live-compose",
             "scenario_id": scenario.scenario_id,
             "difficulty": scenario.difficulty.value,
+            "provider": EVALUATION_PROVIDER,
         },
     )
     experiment = ExperimentConfiguration(
-        prompt_version="phase5-safe-operational-agent-v1",
-        scenario_version=catalog.benchmark_version,
+        prompt_version=ARCHITECTURE_VERSION,
+        scenario_version=scenario.scenario_version,
         evaluation_version="0.1.0",
         retrieval_settings={"source": "saved-benchmark-trajectory"},
         tool_budget=tool_budget,
@@ -100,8 +104,13 @@ async def main() -> None:
 
     assert loaded_run is not None
     assert loaded_run.dataset_version == catalog.benchmark_version
+    assert loaded_run.architecture_version == ARCHITECTURE_VERSION
+    assert loaded_run.model == EVALUATION_MODEL
+    assert loaded_run.seed == scenario.seed
+    assert loaded_run.configuration["provider"] == EVALUATION_PROVIDER
     assert loaded_run.configuration["scenario_id"] == scenario.scenario_id
     assert loaded_experiment is not None
+    assert loaded_experiment.scenario_version == scenario.scenario_version
     assert loaded_experiment.evaluation_version == "0.1.0"
     assert loaded is not None
     assert loaded.agent_run_id == agent_run_id
