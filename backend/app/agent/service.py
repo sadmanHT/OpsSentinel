@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import Engine
 
+from app.agent.architectures import ReactivePhase5Runtime
 from app.agent.models import (
     AgentBudget,
     AgentRunView,
@@ -43,12 +44,17 @@ class AgentService:
             max_retries=settings.max_tool_retries,
             backoff_seconds=settings.tool_retry_backoff_seconds,
         )
+        self.runtime_type: type[Phase5Runtime]
+        if settings.agent_architecture == "reactive_react":
+            self.runtime_type = ReactivePhase5Runtime
+        else:
+            self.runtime_type = Phase5Runtime
         self.store = SqlAgentStore(
             engine,
-            architecture_version=Phase5Runtime.architecture_version,
+            architecture_version=self.runtime_type.architecture_version,
             model=self.provider.name,
         )
-        self.runtime = Phase5Runtime(
+        self.runtime = self.runtime_type(
             registry=resilient_registry,
             provider=self.provider,
             store=self.store,
@@ -67,7 +73,7 @@ class AgentService:
     async def start(self, request: StartInvestigationRequest) -> AgentRunView:
         runtime = self.runtime
         if request.pause_after is not None:
-            runtime = Phase5Runtime(
+            runtime = self.runtime_type(
                 registry=self.runtime.registry,
                 provider=self.provider,
                 store=self.store,

@@ -1,0 +1,310 @@
+name: Phase 8 ResearchLab
+
+on:
+  push:
+    branches:
+      - phase-8-controlled-research
+  pull_request:
+    paths:
+      - "researchlab/**"
+      - "benchmarklab/**"
+      - "evaluationlab/**"
+      - "backend/app/agent/**"
+      - "backend/app/config.py"
+      - "backend/migrations/versions/0005_experiment_trials.py"
+      - "docker-compose.yml"
+      - "scripts/phase8-*.py"
+      - ".github/workflows/phase8-researchlab.yml"
+
+jobs:
+  researchlab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install BenchmarkLab, EvaluationLab, and ResearchLab
+        run: |
+          python -m pip install -e 'benchmarklab[dev]'
+          python -m pip install -e 'evaluationlab[dev]'
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Ruff
+        run: |
+          ruff check researchlab \
+            scripts/phase8-*.py \
+            backend/migrations/versions/0005_experiment_trials.py
+
+      - name: Mypy
+        run: mypy --config-file researchlab/pyproject.toml researchlab/researchlab
+
+      - name: Unit and integrity tests
+        run: pytest researchlab/tests
+
+      - name: Controlled-plan and BenchmarkLab smoke
+        run: python scripts/phase8-research-smoke.py
+
+  persistence:
+    needs: researchlab
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: opssentinel_test
+          POSTGRES_USER: opssentinel
+          POSTGRES_PASSWORD: opssentinel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opssentinel -d opssentinel_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      OPSSENTINEL_ENVIRONMENT: test
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@localhost:5432/opssentinel_test
+      OPSSENTINEL_MCP_DATABASE_URL: postgresql://opssentinel:opssentinel@localhost:5432/opssentinel_test
+      OPSSENTINEL_REDIS_URL: redis://localhost:6379/0
+      OPSSENTINEL_LLM_PROVIDER: deterministic
+      OPSSENTINEL_MCP_REPO_ROOT: ${{ github.workspace }}
+      OPSSENTINEL_MCP_DOCS_ROOT: ${{ github.workspace }}/docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend and ResearchLab
+        run: |
+          python -m pip install -e 'backend[dev]'
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Apply migrations from zero
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: PostgreSQL restart-safe trial persistence
+        run: pytest researchlab/integration/test_postgres_persistence.py
+
+      - name: Phase 8 migration rollback and re-upgrade
+        working-directory: backend
+        run: |
+          alembic downgrade -1
+          alembic upgrade head
+
+  live:
+    needs:
+      - researchlab
+      - persistence
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - explicit_planner
+          - reactive_react
+    env:
+      OPSSENTINEL_AGENT_ARCHITECTURE: ${{ matrix.architecture }}
+      PHASE8_EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install live research runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Start clean architecture campaign
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build \
+            postgres redis backend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+
+      - name: Tiny real controlled experiment
+        run: python scripts/phase8-live-experiment-smoke.py
+
+      - name: Planning vs difficulty experiment arm
+        env:
+          PHASE8_H1_ARM_OUTPUT: phase8-h1-${{ matrix.architecture }}.json
+        run: python scripts/phase8-planning-difficulty-arm.py
+
+      - name: Retain planning/difficulty raw trajectories
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-h1-${{ matrix.architecture }}
+          path: phase8-h1-${{ matrix.architecture }}.json
+          if-no-files-found: error
+
+      - name: Verify clean restoration and logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend --no-color > /tmp/opssentinel-phase8-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway \
+            --no-color > /tmp/opssentinel-phase8-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase8-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase8-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  planning-difficulty-report:
+    needs: live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reporting runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e researchlab
+
+      - name: Download architecture arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phase8-h1-*
+          path: phase8-h1-arms
+          merge-multiple: true
+
+      - name: Build descriptive planning/difficulty report
+        run: |
+          python scripts/phase8-planning-difficulty-report.py \
+            --output phase8-h1-report.json \
+            phase8-h1-arms/phase8-h1-explicit_planner.json \
+            phase8-h1-arms/phase8-h1-reactive_react.json
+
+      - name: Retain complete Experiment 1 research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-h1-planning-difficulty-report
+          path: |
+            phase8-h1-report.json
+            phase8-h1-arms/*.json
+          if-no-files-found: error
+
+  investigation-budget:
+    needs:
+      - researchlab
+      - persistence
+    runs-on: ubuntu-latest
+    env:
+      OPSSENTINEL_AGENT_ARCHITECTURE: explicit_planner
+      PHASE8_EXPECTED_ARCHITECTURE: explicit_planner
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
+      PHASE8_H2_OUTPUT: phase8-h2-investigation-budget.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install live research runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Start clean explicit-planner budget campaign
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build \
+            postgres redis backend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+
+      - name: Investigation budget experiment
+        run: python scripts/phase8-investigation-budget-experiment.py
+
+      - name: Retain complete Experiment 2 research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-h2-investigation-budget
+          path: phase8-h2-investigation-budget.json
+          if-no-files-found: error
+
+      - name: Verify clean restoration and logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend --no-color > /tmp/opssentinel-phase8-h2-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway \
+            --no-color > /tmp/opssentinel-phase8-h2-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase8-h2-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase8-h2-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans
