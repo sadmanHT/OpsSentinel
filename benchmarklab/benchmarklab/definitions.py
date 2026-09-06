@@ -308,7 +308,7 @@ def build_release_catalog() -> BenchmarkCatalog:
 
     # Easy: 10 development scenarios, two strong-signal variants per fault.
     for fault in ORDER:
-        for variant in range(2):
+        for direct_variant in range(2):
             raw.append(
                 _single(
                     index,
@@ -317,7 +317,7 @@ def build_release_catalog() -> BenchmarkCatalog:
                     kind="standard",
                     fault=fault,
                     structure="dev_single_strong_signal",
-                    template=f"dev_direct_{fault}_{variant}",
+                    template=f"dev_direct_{fault}_{direct_variant}",
                     cause=0.0,
                     effect=30.0,
                 )
@@ -361,7 +361,7 @@ def build_release_catalog() -> BenchmarkCatalog:
             )
         )
         index += 1
-    for variant, cause, effect in (
+    for cf_variant, cause, effect in (
         ("original", 0.0, 60.0),
         ("gap_then_cron", 6_420.0, 6_480.0),
     ):
@@ -373,11 +373,11 @@ def build_release_catalog() -> BenchmarkCatalog:
                 kind="counterfactual",
                 fault="connection_leak",
                 structure="validation_counterfactual_timing",
-                template=f"validation_cf_{variant}",
+                template=f"validation_cf_{cf_variant}",
                 cause=cause,
                 effect=effect,
                 counterfactual_family="deploy-cron-latency",
-                counterfactual_variant=variant,
+                counterfactual_variant=cf_variant,
             )
         )
         index += 1
