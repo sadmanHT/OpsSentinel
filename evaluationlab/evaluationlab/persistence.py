@@ -7,6 +7,7 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 from pydantic import Field, model_validator
 from sqlalchemy import Engine, MetaData, Table, delete, insert, select
 
+from evaluationlab.counterfactual import CounterfactualMetrics
 from evaluationlab.models import EvaluationResult, FailureCategory, StrictModel
 
 
@@ -95,6 +96,19 @@ def _metric_values(result: EvaluationResult) -> dict[str, float]:
             result.efficiency.steps_to_correct_hypothesis
         )
     return values
+
+
+def _counterfactual_metric_values(metrics: CounterfactualMetrics) -> dict[str, float]:
+    values = {"counterfactual.consistency": metrics.consistency}
+    if metrics.causal_sensitivity is not None:
+        values["counterfactual.causal_sensitivity"] = metrics.causal_sensitivity
+    if metrics.causal_invariance is not None:
+        values["counterfactual.causal_invariance"] = metrics.causal_invariance
+    return values
+
+
+def _counterfactual_scope(family: str) -> str:
+    return f"counterfactual:{family}"
 
 
 class SqlEvaluationStore:
@@ -196,6 +210,51 @@ class SqlEvaluationStore:
                     )
                 )
 
+    def save_counterfactual_metrics(
+        self,
+        evaluation_run_id: UUID,
+        metrics: CounterfactualMetrics,
+        *,
+        trace: dict[str, Any] | None = None,
+    ) -> None:
+        run_id = str(evaluation_run_id)
+        scenario_id = _counterfactual_scope(metrics.family)
+        trace_payload = trace or {}
+        with self.engine.begin() as connection:
+            run_exists = connection.execute(
+                select(self.runs.c.id).where(self.runs.c.id == run_id)
+            ).first()
+            if run_exists is None:
+                raise ValueError(f"evaluation run {evaluation_run_id} does not exist")
+            connection.execute(
+                delete(self.scores).where(
+                    self.scores.c.evaluation_run_id == run_id,
+                    self.scores.c.scenario_id == scenario_id,
+                )
+            )
+            for metric_name, score in _counterfactual_metric_values(metrics).items():
+                score_id = uuid5(
+                    NAMESPACE_URL,
+                    "opssentinel:evaluation-score:"
+                    f"{run_id}:{scenario_id}:{metric_name}",
+                )
+                details: dict[str, Any] = {}
+                if metric_name == "counterfactual.consistency":
+                    details["counterfactual_metrics"] = metrics.model_dump(mode="json")
+                connection.execute(
+                    insert(self.scores).values(
+                        id=str(score_id),
+                        evaluation_run_id=run_id,
+                        agent_run_id=None,
+                        scenario_id=scenario_id,
+                        metric_name=metric_name,
+                        score=score,
+                        details=details,
+                        trace=trace_payload,
+                        failure_categories=[],
+                    )
+                )
+
     def load_run(self, evaluation_run_id: UUID) -> EvaluationRunMetadata | None:
         with self.engine.connect() as connection:
             row = connection.execute(
@@ -257,6 +316,24 @@ class SqlEvaluationStore:
             failure_categories=categories,
         )
 
+    def load_counterfactual_metrics(
+        self,
+        evaluation_run_id: UUID,
+        family: str,
+    ) -> CounterfactualMetrics | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(self.scores).where(
+                    self.scores.c.evaluation_run_id == str(evaluation_run_id),
+                    self.scores.c.scenario_id == _counterfactual_scope(family),
+                    self.scores.c.metric_name == "counterfactual.consistency",
+                )
+            ).mappings().first()
+        if row is None:
+            return None
+        details = _json_object(row["details"], "counterfactual score details")
+        return CounterfactualMetrics.model_validate(details.get("counterfactual_metrics"))
+
     def metric_names(self, evaluation_run_id: UUID, scenario_id: str) -> list[str]:
         with self.engine.connect() as connection:
             rows = connection.execute(
@@ -266,3 +343,6 @@ class SqlEvaluationStore:
                 )
             ).scalars()
             return sorted(str(value) for value in rows)
+
+    def counterfactual_metric_names(self, evaluation_run_id: UUID, family: str) -> list[str]:
+        return self.metric_names(evaluation_run_id, _counterfactual_scope(family))
