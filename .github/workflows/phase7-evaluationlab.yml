@@ -1,0 +1,45 @@
+name: Phase 7 EvaluationLab
+
+on:
+  push:
+    branches: [phase-7-evaluation-engine]
+  pull_request:
+    branches: [main]
+
+jobs:
+  evaluationlab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: evaluationlab/pyproject.toml
+      - name: Install EvaluationLab
+        run: python -m pip install -e 'evaluationlab[dev]'
+      - name: Ruff
+        run: ruff check evaluationlab
+      - name: Mypy
+        run: mypy evaluationlab/evaluationlab
+      - name: Known-answer metric tests
+        run: pytest evaluationlab/tests
+      - name: Determinism smoke
+        working-directory: evaluationlab
+        run: |
+          python - <<'PY'
+          from evaluationlab import EvaluationCase, EvaluationEngine
+
+          case = EvaluationCase(
+              benchmark_version='1.0.0',
+              scenario_id='ci-determinism',
+              expected_primary_root_cause_code='n_plus_one_query',
+              predicted_primary_root_cause_code='N_PLUS_ONE',
+              confidence=1.0,
+              selected_evidence_tags=['metric:db_queries'],
+              relevant_evidence_tags=['metric:db_queries'],
+              critical_evidence_tags=['metric:db_queries'],
+          )
+          engine = EvaluationEngine()
+          assert engine.evaluate(case).model_dump() == engine.evaluate(case).model_dump()
+          PY
