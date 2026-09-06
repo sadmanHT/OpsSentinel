@@ -2,10 +2,10 @@ import os
 from datetime import UTC, datetime
 from uuid import UUID
 
+from app.persistence.models import AgentRunRecord, EvaluationScoreRecord, IncidentRecord
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.persistence.models import AgentRunRecord, EvaluationScoreRecord, IncidentRecord
 from evaluationlab.engine import EvaluationEngine
 from evaluationlab.models import EvaluationCase, FailureCategory
 from evaluationlab.persistence import (
