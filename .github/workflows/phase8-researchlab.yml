@@ -35,8 +35,7 @@ jobs:
       - name: Ruff
         run: |
           ruff check researchlab \
-            scripts/phase8-research-smoke.py \
-            scripts/phase8-live-experiment-smoke.py \
+            scripts/phase8-*.py \
             backend/migrations/versions/0005_experiment_trials.py
 
       - name: Mypy
@@ -158,6 +157,18 @@ jobs:
       - name: Tiny real controlled experiment
         run: python scripts/phase8-live-experiment-smoke.py
 
+      - name: Planning vs difficulty experiment arm
+        env:
+          PHASE8_H1_ARM_OUTPUT: phase8-h1-${{ matrix.architecture }}.json
+        run: python scripts/phase8-planning-difficulty-arm.py
+
+      - name: Retain planning/difficulty raw trajectories
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-h1-${{ matrix.architecture }}
+          path: phase8-h1-${{ matrix.architecture }}.json
+          if-no-files-found: error
+
       - name: Verify clean restoration and logs
         run: |
           set -euo pipefail
@@ -177,3 +188,41 @@ jobs:
       - name: Teardown
         if: always()
         run: docker compose down -v --remove-orphans
+
+  planning-difficulty-report:
+    needs: live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reporting runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e researchlab
+
+      - name: Download architecture arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phase8-h1-*
+          path: phase8-h1-arms
+          merge-multiple: true
+
+      - name: Build descriptive planning/difficulty report
+        run: |
+          python scripts/phase8-planning-difficulty-report.py \
+            --output phase8-h1-report.json \
+            phase8-h1-arms/phase8-h1-explicit_planner.json \
+            phase8-h1-arms/phase8-h1-reactive_react.json
+
+      - name: Retain complete Experiment 1 research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-h1-planning-difficulty-report
+          path: |
+            phase8-h1-report.json
+            phase8-h1-arms/*.json
+          if-no-files-found: error
