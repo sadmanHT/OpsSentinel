@@ -2,7 +2,9 @@
 
 ## Status
 
-**In progress. Do not treat Phase 3 as complete until the cumulative Phase 1 + Phase 2 + Phase 3 CI gate passes.**
+**Complete. The cumulative Phase 1 + Phase 2 + Phase 3 CI gate is green.**
+
+Validation completed on the Phase 3 branch with CI run #37 (`34012483216`). Backend lint, strict typing, unit tests, startup/MCP smoke tests, migrations, integration tests, rollback/re-upgrade, frontend production build, ChaosLab tests, and the clean-state Compose cumulative gate all passed. The Compose gate also passed the Phase 2 regression scenarios, the Phase 3 MCP-only five-incident diagnosis harness, restart cleanup regression, log cleanliness checks, and clean teardown.
 
 ## Intended outcome
 
@@ -18,13 +20,11 @@ Phase 3 adds a controlled investigation boundary for future agents. The legal su
 - Services are allowlisted; `controller` is intentionally not a legal target.
 - R0/R1 are automatic, R2 requires human approval, and R3 is blocked.
 
-## Required cumulative gate
+## Completed cumulative gate
 
-Before this document is marked complete, verify:
-
-1. Phase 1 backend lint/type/unit/migration/integration checks still pass.
-2. Frontend production build still passes.
-3. Phase 2 ChaosLab unit tests and all five live fault/restoration scenarios still pass.
+1. Phase 1 backend lint/type/unit/migration/integration checks pass.
+2. Frontend production build passes.
+3. Phase 2 ChaosLab unit tests and all five live fault/restoration scenarios pass.
 4. Every Phase 3 tool has valid, invalid, timeout/unavailable, bounded-output, and permission coverage through the shared registry contract plus tool-specific tests.
 5. Mutation SQL, shell escapes, arbitrary executable commands, path traversal, and unauthorized service interaction are rejected.
 6. All five existing incidents can be diagnosed with evidence gathered only through legal MCP tools.
