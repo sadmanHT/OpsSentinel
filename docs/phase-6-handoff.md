@@ -2,7 +2,7 @@
 
 ## Status
 
-**Branch closeout candidate; not yet fully closed.** The complete Phase 1–6 code gate passed on branch head `263133d29983b44d26ef5dff8a0532470330bf58` in CI run **#100**, and the dedicated Phase 6 BenchmarkLab workflow run **#38** passed its static and live gates on the same branch state. Phase 6 still requires a documentation-inclusive rerun, PR #8 merge, and post-merge `main` cumulative revalidation before it may be declared fully complete.
+**Closure record.** Phase 6 implementation, documentation-inclusive branch validation, PR merge, and post-merge `main` cumulative validation have all passed. PR #8 merged the validated Phase 6 head into `main` at `7d5b95440c7f200a1fcd8a68b22246a62ee095c7`, and push-triggered CI run **#103** passed the complete Phase 1–6 gate on that merge commit. This status-only documentation update does not change implementation; project policy still requires the CI triggered by this exact status commit to remain green before Phase 7 work starts.
 
 ## Implementation summary
 
@@ -55,7 +55,7 @@ Near-identical failure/template/combination structures are prevented from leakin
 7. **Counterfactuals are controlled variants.** The deploy/cron/latency family includes original, long-gap, no-deploy, and disabled-trigger controls for diagnosis-consistency analysis.
 8. **Evidence declarations are primitive-specific.** Every injected primitive requires its own evidence family; compound cases require the union; fault-free controls require healthy-baseline/no-error evidence.
 9. **Research integrity beats passing tests.** Failures exposed by live validation were fixed at the model/runner contract rather than by weakening assertions or changing labels to force success.
-10. **Phase 6 is cumulative.** The ordinary `CI` workflow now includes a BenchmarkLab static job and executes the Phase 6 live benchmark smoke inside the clean-state Compose chain after the Phase 2–5 smokes.
+10. **Phase 6 is cumulative.** The ordinary `CI` workflow includes a BenchmarkLab static job and executes the Phase 6 live benchmark smoke inside the clean-state Compose chain after the Phase 2–5 smokes.
 
 ## Defects found and repaired during live validation
 
@@ -74,7 +74,7 @@ New project configuration/CI surface:
 
 - standalone `benchmarklab/pyproject.toml` package definition;
 - dedicated `.github/workflows/phase6-benchmarklab.yml` static + live workflow;
-- ordinary `.github/workflows/ci.yml` now includes a `benchmarklab` job and installs BenchmarkLab in the Compose job before the cumulative live smoke.
+- ordinary `.github/workflows/ci.yml` includes a `benchmarklab` job and installs BenchmarkLab in the Compose job before the cumulative live smoke.
 
 The existing backend migration gate still applies migrations from zero and verifies rollback/re-upgrade.
 
@@ -110,7 +110,7 @@ The live smoke verifies:
 - live `BenchmarkRunner.run()` → `/agent/runs` execution and grounded N+1 diagnosis;
 - restoration after each scenario and after the live agent run.
 
-Cumulative Phase 1–6 Compose sequence now includes:
+Cumulative Phase 1–6 Compose sequence includes:
 
 ```bash
 python scripts/phase2-smoke.py
@@ -124,26 +124,32 @@ python scripts/phase6-benchmark-smoke.py
 
 The cumulative gate also verifies clean startup, migrations/schema state, persisted checkpoint/diagnosis counts, normal load generation, metrics/tool/agent endpoints, zero residual ChaosLab faults, critical-log absence, restart cleanup, and clean teardown.
 
-## Branch validation results
+## Validation results
 
-### Dedicated Phase 6 workflow
+### Code-complete branch proof
 
-Workflow run **#38** passed both jobs:
+On branch head `263133d29983b44d26ef5dff8a0532470330bf58`:
 
-- **benchmarklab: PASS** — install, Ruff, strict mypy, unit/integrity tests, and catalog smoke;
-- **live-benchmarklab: PASS** — clean Compose build, full-stack health, representative live scenario validity gate, live agent BenchmarkRunner E2E, final restoration/log inspection, and teardown.
+- dedicated Phase 6 workflow **#38: PASS**;
+- cumulative CI **#100: PASS** across backend, ChaosLab, BenchmarkLab, frontend, and the clean-state Phase 1–6 Compose gate.
 
-### Cumulative CI
+### Documentation-inclusive branch proof
 
-CI run **#100** passed all five jobs on branch head `263133d29983b44d26ef5dff8a0532470330bf58`:
+On documentation-complete head `90d3763f891d3eddf47fc79ba733f14cc69f6583`:
 
-- **backend: PASS** — Ruff, strict mypy, unit tests, backend/MCP/agent import/startup smoke, migration upgrade, integration tests, migration rollback/re-upgrade, and cleanup;
-- **chaoslab: PASS** — Ruff, unit tests, and import smoke tests;
-- **benchmarklab: PASS** — Ruff, strict mypy, unit/integrity tests, and catalog smoke;
-- **frontend: PASS** — production build;
-- **compose: PASS** — Compose validation/build, complete clean-state Phase 1–6 integration gate including the live BenchmarkLab/agent smoke, restart cleanup regression, log inspection, and clean teardown.
+- dedicated Phase 6 workflow **#42: PASS**, including clean Compose build, representative live benchmark validity, real agent E2E, restoration/log inspection, and teardown;
+- cumulative CI **#102: PASS** across all five jobs, including the complete clean-state Phase 1–6 Compose chain and restart cleanup.
 
-This is the branch-level cumulative proof required before documentation closeout and merge.
+### Merge and post-merge `main` proof
+
+- PR **#8** merged the exact validated head `90d3763f891d3eddf47fc79ba733f14cc69f6583` using an expected-head guard;
+- merge commit: `7d5b95440c7f200a1fcd8a68b22246a62ee095c7`;
+- push-triggered `main` CI **#103: PASS**;
+- backend: PASS — Ruff, strict mypy, unit tests, startup/import smoke, migration upgrade, integration tests, migration rollback/re-upgrade;
+- ChaosLab: PASS — Ruff, unit tests, import smoke;
+- BenchmarkLab: PASS — Ruff, strict mypy, unit/integrity tests, catalog smoke;
+- frontend: PASS — production build;
+- Compose: PASS — validation/build, full clean-state Phase 1–6 integration gate including the live BenchmarkLab/agent smoke, restart cleanup, and teardown.
 
 ## Phase 6 required behavior demonstrated
 
@@ -161,7 +167,7 @@ This is the branch-level cumulative proof required before documentation closeout
 - the runner launches incidents independently of the agent;
 - the runner can also execute the real autonomous agent and record an evaluator artifact;
 - launch/run cleanup leaves ChaosLab restored;
-- the complete Phase 1–6 system passes together from a clean Compose environment.
+- the complete Phase 1–6 system passes together from a clean Compose environment on branch and on `main`.
 
 ## Known non-blocking limitations
 
@@ -172,7 +178,7 @@ This is the branch-level cumulative proof required before documentation closeout
 
 ## Exact Phase 7 prerequisites
 
-After final Phase 6 closeout, Phase 7 may rely on:
+Phase 7 may rely on the following only after the CI triggered by this final status-only commit remains green:
 
 - a deterministic typed 50-scenario benchmark catalog with fixed versioning and seeds;
 - stable difficulty and dev/validation/hidden split labels;
@@ -187,4 +193,4 @@ After final Phase 6 closeout, Phase 7 may rely on:
 
 ## Final closeout condition
 
-**Pending.** The implementation/code gate is satisfied on the Phase 6 branch, but Phase 6 is not fully closed until this documentation-inclusive branch state passes both CI gates, PR #8 is merged, and the merged `main` state passes the complete Phase 1–6 cumulative gate. Only then may Phase 7 begin.
+All substantive Phase 6 closeout conditions have passed: implementation, scenario validity, representative live tier validation, leakage and reproducibility checks, independent launch, live agent execution, restoration, documentation-inclusive branch CI, PR merge, and post-merge `main` cumulative CI. The only remaining mechanical safeguard is that the automatically triggered CI for this status-only documentation commit must remain green. Once it does, **Phase 6 is fully closed and Phase 7 is unblocked.**
