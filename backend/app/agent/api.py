@@ -2,7 +2,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.agent.models import AgentRunView, StartInvestigationRequest
+from app.agent.models import (
+    AgentRunView,
+    ApprovalDecisionRequest,
+    StartInvestigationRequest,
+)
 from app.agent.service import AgentService, build_agent_service
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -42,3 +46,16 @@ async def resume_investigation(run_id: UUID) -> AgentRunView:
         return await service.resume(run_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="agent run not found") from exc
+
+
+@router.post("/runs/{run_id}/approval", response_model=AgentRunView)
+async def decide_approval(
+    run_id: UUID,
+    request: ApprovalDecisionRequest,
+) -> AgentRunView:
+    try:
+        return await service.decide_approval(run_id, request)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="agent run not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
