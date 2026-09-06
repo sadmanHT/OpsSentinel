@@ -18,9 +18,9 @@ class RetryEvent:
     attempt: int
 
 
-_retry_events: ContextVar[tuple[RetryEvent, ...]] = ContextVar(
+_retry_events: ContextVar[list[RetryEvent] | None] = ContextVar(
     "opssentinel_retry_events",
-    default=(),
+    default=None,
 )
 
 
@@ -51,6 +51,24 @@ class RetryingToolRegistry(ToolRegistry):
     def definitions(self) -> list[ToolDefinition]:
         return self.inner.definitions()
 
+    def begin_capture(self) -> None:
+        """Start an isolated retry-event buffer for one agent request/run.
+
+        LangGraph may execute nodes in child async contexts. A mutable list stored in a
+        ContextVar is inherited by reference, so child tasks can append retry events and
+        the parent Phase 5 runtime can drain them after the graph returns. Each request
+        receives a fresh list, preserving isolation between concurrent investigations.
+        """
+
+        _retry_events.set([])
+
+    def _event_buffer(self) -> list[RetryEvent]:
+        events = _retry_events.get()
+        if events is None:
+            events = []
+            _retry_events.set(events)
+        return events
+
     async def invoke(
         self,
         invocation: ToolInvocation,
@@ -78,7 +96,7 @@ class RetryingToolRegistry(ToolRegistry):
                 retryable=bool(error is not None and error.retryable),
                 attempt=attempt,
             )
-            _retry_events.set((*_retry_events.get(), event))
+            self._event_buffer().append(event)
 
             should_retry = (
                 response.status == ToolCallStatus.FAILED
@@ -94,6 +112,9 @@ class RetryingToolRegistry(ToolRegistry):
             attempt += 1
 
     def drain_failures(self) -> list[RetryEvent]:
-        events = list(_retry_events.get())
-        _retry_events.set(())
-        return events
+        events = _retry_events.get()
+        if not events:
+            return []
+        drained = list(events)
+        events.clear()
+        return drained
