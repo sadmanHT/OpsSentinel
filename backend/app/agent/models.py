@@ -101,7 +101,9 @@ class ProposedAction(StrictModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     expected_benefit: str = "Restore the affected sandbox service to a healthy state."
     possible_risk: str = "The reversible sandbox action may interrupt in-flight test traffic."
-    rollback_strategy: str = "Restore the previous sandbox state or reinject the scenario if needed."
+    rollback_strategy: str = (
+        "Restore the previous sandbox state or reinject the scenario if needed."
+    )
 
 
 class ApprovalRequest(StrictModel):
