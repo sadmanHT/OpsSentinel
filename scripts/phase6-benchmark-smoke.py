@@ -7,12 +7,12 @@ from typing import Any
 
 import httpx
 
-from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
 from benchmarklab.models import Difficulty, ScenarioSpec
 from benchmarklab.validation import (
     validate_agent_payload_is_public_only,
     validate_release_catalog,
 )
+from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
 
 CONTROLLER = "http://127.0.0.1:8100"
 SERVICES = {
@@ -29,12 +29,18 @@ def get_json(url: str) -> dict[str, Any] | list[dict[str, Any]]:
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, (dict, list)):
-        raise AssertionError(f"expected JSON object/list from {url}, got {type(payload)!r}")
+        raise TypeError(f"expected JSON object/list from {url}, got {type(payload)!r}")
     return payload
 
 
 def post_json(url: str, payload: dict[str, Any] | None = None) -> httpx.Response:
     return httpx.post(url, json=payload or {}, timeout=20.0)
+
+
+async def async_status(url: str) -> int:
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(url)
+    return response.status_code
 
 
 def active_fault_pairs() -> set[tuple[str, str]]:
@@ -192,9 +198,10 @@ async def main() -> None:
     assert launch.injected_fault_count == 0
     assert launch.stimulus_count == 0
     assert active_fault_pairs() == set()
-    assert httpx.get(
-        f"{SERVICES['inventory']}/inventory/SKU-RED", timeout=20.0
-    ).status_code == 200
+    assert (
+        await async_status(f"{SERVICES['inventory']}/inventory/SKU-RED")
+        == 200
+    )
     await runner.restore()
     assert_restored()
 
