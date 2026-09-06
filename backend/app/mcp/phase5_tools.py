@@ -80,7 +80,9 @@ class Phase5Tools:
         authorize_service(self.permissions, args.service)
         method = args.method.upper()
         if (args.service, method, args.path) not in self._request_allowlist:
-            raise UnsafeOperation("request target is not allowlisted for deterministic verification")
+            raise UnsafeOperation(
+                "request target is not allowlisted for deterministic verification"
+            )
         status, payload = await self.services.request(args.service, method, args.path)
         expected = args.expected_status
         passed = status == expected if expected is not None else 200 <= status < 400
