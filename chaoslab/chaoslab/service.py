@@ -132,7 +132,10 @@ async def gateway_checkout():
         if orders_response.status_code >= 500:
             raise HTTPException(status_code=502, detail="checkout dependency unavailable")
         if orders_response.status_code >= 400:
-            raise HTTPException(status_code=orders_response.status_code, detail=orders_response.text)
+            raise HTTPException(
+                status_code=orders_response.status_code,
+                detail=orders_response.text,
+            )
         payment_response = await client.post(f"{config.payment_url}/charge")
         if payment_response.status_code >= 400:
             raise HTTPException(status_code=502, detail="payment dependency failure")
