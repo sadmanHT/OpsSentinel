@@ -213,6 +213,7 @@ jobs:
           python scripts/phase5-rejected-matrix-smoke.py
           python scripts/phase6-benchmark-smoke.py
           python scripts/phase7-evaluation-smoke.py
+          python scripts/phase7-representative-evaluation-smoke.py
 
           checkpoint_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM agent_checkpoints;")
@@ -226,9 +227,9 @@ jobs:
             "SELECT COUNT(*) FROM experiment_metadata;")
           test "$checkpoint_count" -ge 18
           test "$diagnosis_count" -ge 18
-          test "$evaluation_run_count" -ge 1
-          test "$evaluation_score_count" -ge 1
-          test "$experiment_count" -ge 1
+          test "$evaluation_run_count" -ge 6
+          test "$evaluation_score_count" -ge 6
+          test "$experiment_count" -ge 6
 
           docker compose exec -T gateway python - <<'PY'
           import asyncio
@@ -262,6 +263,14 @@ jobs:
             cat /tmp/opssentinel-chaoslab.log
             exit 1
           fi
+      - name: Upload Phase 7 research artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase7-representative-evaluation
+          path: artifacts/phase7/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Restart cleanup regression
         run: |
           set -euo pipefail
