@@ -320,7 +320,10 @@ class Phase5Runtime:
         if response.status != ToolCallStatus.SUCCEEDED:
             state.verification = VerificationResult(
                 status=VerificationStatus.INCONCLUSIVE,
-                summary="Approved action did not complete successfully; post-action verification was skipped.",
+                summary=(
+                    "Approved action did not complete successfully; post-action verification "
+                    "was skipped."
+                ),
             )
             state.operation_stage = OperationStage.COMPLETE
             state.status = AgentRunStatus.FAILED
@@ -366,7 +369,10 @@ class Phase5Runtime:
             summary = "Deterministic post-action verification passed against live simulator state."
         elif passed is False:
             verification_status = VerificationStatus.FAILED
-            summary = "Deterministic post-action verification completed but the expected healthy state was not observed."
+            summary = (
+                "Deterministic post-action verification completed but the expected healthy state "
+                "was not observed."
+            )
         else:
             verification_status = VerificationStatus.INCONCLUSIVE
             summary = "Verification completed without a deterministic pass/fail signal."
