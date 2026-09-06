@@ -34,6 +34,18 @@ class AgentRunRecord(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False)
 
 
+class AgentCheckpointRecord(Base):
+    __tablename__ = "agent_checkpoints"
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="CASCADE"), primary_key=True
+    )
+    state: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    next_node: Mapped[str] = mapped_column(String(80), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class EvidenceRecord(Base):
     __tablename__ = "evidence"
 

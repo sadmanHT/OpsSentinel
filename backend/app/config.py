@@ -22,8 +22,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     llm_provider: str = "local"
     llm_model: str = "local-placeholder"
+    llm_timeout_seconds: float = Field(default=30.0, ge=0.1, le=300.0)
+    local_model_base_url: str = "http://localhost:11434"
     max_steps: int = Field(default=20, ge=1, le=200)
     max_tool_calls: int = Field(default=15, ge=1, le=200)
+    max_repeated_identical_calls: int = Field(default=2, ge=1, le=20)
+    agent_time_limit_seconds: float = Field(default=120.0, ge=1.0, le=3600.0)
+    agent_token_budget: int = Field(default=32_000, ge=0, le=10_000_000)
+    agent_cost_budget: float = Field(default=0.0, ge=0.0, le=10_000.0)
     random_seed: int = 42
     langfuse_enabled: bool = False
     langfuse_host: str = "http://localhost:3000"

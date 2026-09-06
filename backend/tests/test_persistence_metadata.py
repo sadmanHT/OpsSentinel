@@ -14,5 +14,6 @@ def test_phase_one_tables_are_registered() -> None:
         "evaluation_runs",
         "evaluation_scores",
         "experiment_metadata",
+        "agent_checkpoints",
     }
     assert expected == set(Base.metadata.tables)

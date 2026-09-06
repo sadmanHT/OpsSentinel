@@ -4,7 +4,8 @@ from pydantic import ValidationError
 from app.config import Settings
 
 
-def test_settings_defaults_to_local_model() -> None:
+def test_settings_defaults_to_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPSSENTINEL_LLM_PROVIDER", raising=False)
     settings = Settings(_env_file=None)
     assert settings.llm_provider == "local"
     assert settings.max_steps > 0

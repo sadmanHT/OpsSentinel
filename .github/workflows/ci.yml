@@ -37,6 +37,7 @@ jobs:
       OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@localhost:5432/opssentinel_test
       OPSSENTINEL_MCP_DATABASE_URL: postgresql://opssentinel_reader:opssentinel_readonly@localhost:5432/opssentinel_test
       OPSSENTINEL_REDIS_URL: redis://localhost:6379/0
+      OPSSENTINEL_LLM_PROVIDER: deterministic
       OPSSENTINEL_MCP_REPO_ROOT: ${{ github.workspace }}
       OPSSENTINEL_MCP_DOCS_ROOT: ${{ github.workspace }}/docs
     steps:
@@ -54,11 +55,12 @@ jobs:
         run: mypy backend/app
       - name: Unit tests
         run: pytest backend/tests -m 'not integration'
-      - name: Backend and MCP import/startup smoke test
+      - name: Backend, MCP, and agent import/startup smoke test
         working-directory: backend
         run: |
-          python -c "from app.main import app; assert app.title == 'OpsSentinel API'"
+          python -c "from app.main import app; assert app.title == 'OpsSentinel API'; assert app.version == '0.3.0'"
           python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 10"
+          python -c "from app.agent.runtime import AgentRuntime; assert AgentRuntime.architecture_version == 'phase4-single-agent-v1'"
       - name: Migration upgrade
         run: alembic upgrade head
         working-directory: backend
@@ -127,6 +129,7 @@ jobs:
           for attempt in $(seq 1 45); do
             if curl --fail --silent http://127.0.0.1:8000/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8000/mcp/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
@@ -148,12 +151,21 @@ jobs:
 
           curl --fail --show-error http://127.0.0.1:8000/health
           curl --fail --show-error http://127.0.0.1:8000/mcp/health
+          curl --fail --show-error http://127.0.0.1:8000/agent/health
           docker compose exec -T postgres psql -U opssentinel -d opssentinel \
-            -c "SELECT to_regclass('public.incidents') AS incidents_table;" \
-            | grep incidents
+            -c "SELECT to_regclass('public.incidents') AS incidents_table, to_regclass('public.agent_checkpoints') AS checkpoint_table;" \
+            | grep agent_checkpoints
 
           python scripts/phase2-smoke.py
           python scripts/phase3-mcp-smoke.py
+          python scripts/phase4-agent-smoke.py
+
+          checkpoint_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
+            "SELECT COUNT(*) FROM agent_checkpoints;")
+          diagnosis_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
+            "SELECT COUNT(*) FROM diagnoses;")
+          test "$checkpoint_count" -ge 5
+          test "$diagnosis_count" -ge 5
 
           docker compose exec -T gateway python - <<'PY'
           import asyncio
@@ -168,6 +180,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:8101/metrics | grep chaoslab_db_queries_last_request
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
           curl --fail --silent http://127.0.0.1:8000/mcp/tools | grep search_logs
+          curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase4-single-agent-v1
 
           docker compose ps
           docker compose logs backend --no-color > /tmp/opssentinel-backend.log

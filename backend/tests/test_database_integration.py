@@ -9,7 +9,7 @@ from app.persistence.session import create_database_engine
 
 
 @pytest.mark.integration
-def test_database_has_phase_one_tables_after_migration() -> None:
+def test_database_has_phase_tables_after_migration() -> None:
     settings = Settings(_env_file=None, database_url=os.environ["OPSSENTINEL_DATABASE_URL"])
     engine = create_database_engine(settings)
     expected = {
@@ -23,6 +23,7 @@ def test_database_has_phase_one_tables_after_migration() -> None:
         "evaluation_runs",
         "evaluation_scores",
         "experiment_metadata",
+        "agent_checkpoints",
     }
     assert expected.issubset(set(inspect(engine).get_table_names()))
 
