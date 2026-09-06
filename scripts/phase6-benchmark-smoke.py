@@ -9,7 +9,10 @@ import httpx
 
 from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
 from benchmarklab.models import Difficulty, ScenarioSpec
-from benchmarklab.validation import validate_agent_payload_is_public_only, validate_release_catalog
+from benchmarklab.validation import (
+    validate_agent_payload_is_public_only,
+    validate_release_catalog,
+)
 
 CONTROLLER = "http://127.0.0.1:8100"
 SERVICES = {
@@ -51,8 +54,12 @@ def telemetry(service: str) -> dict[str, Any]:
 
 
 def assert_timeline_contract(scenario: ScenarioSpec) -> None:
-    effects = [event.offset_seconds for event in scenario.timeline if event.role.value == "effect"]
-    causes = [event.offset_seconds for event in scenario.timeline if event.role.value == "cause"]
+    effects = [
+        event.offset_seconds for event in scenario.timeline if event.role.value == "effect"
+    ]
+    causes = [
+        event.offset_seconds for event in scenario.timeline if event.role.value == "cause"
+    ]
     assert effects, scenario.scenario_id
     if causes:
         assert min(causes) <= min(effects), scenario.scenario_id
@@ -151,31 +158,33 @@ async def main() -> None:
     runner = BenchmarkRunner()
 
     # Easy: single N+1 with strong query/latency signal.
-    easy = scenario_by_id("ops-v1-001", catalog=catalog)
+    easy = scenario_by_id(catalog, "ops-v1-001")
     assert easy.difficulty == Difficulty.EASY
     first_signature = await launch_and_validate(runner, easy, evidence_n_plus_one)
 
     # Identical seed must replay the same deterministic query-count signature.
     second_signature = await launch_and_validate(runner, easy, evidence_n_plus_one)
+    assert isinstance(first_signature, tuple)
+    assert isinstance(second_signature, tuple)
     assert first_signature[0] == second_signature[0]
 
     # Medium: connection leak with realistic distractor metadata.
-    medium = scenario_by_id("ops-v1-012", catalog=catalog)
+    medium = scenario_by_id(catalog, "ops-v1-012")
     assert medium.difficulty == Difficulty.MEDIUM
     await launch_and_validate(runner, medium, evidence_connection_leak)
 
     # Hard: delayed disk-exhaustion effect and worker evidence.
-    hard = scenario_by_id("ops-v1-025", catalog=catalog)
+    hard = scenario_by_id(catalog, "ops-v1-025")
     assert hard.difficulty == Difficulty.HARD
     await launch_and_validate(runner, hard, evidence_disk_exhaustion)
 
-    # Adversarial: misleading-change metadata while memory evidence identifies the real issue.
-    adversarial = scenario_by_id("ops-v1-042", catalog=catalog)
+    # Adversarial: misleading-change metadata while memory evidence identifies the issue.
+    adversarial = scenario_by_id(catalog, "ops-v1-042")
     assert adversarial.difficulty == Difficulty.ADVERSARIAL
     await launch_and_validate(runner, adversarial, evidence_memory_leak)
 
-    # Counterfactual control: deployment metadata but no fault and no incident degradation.
-    counterfactual = scenario_by_id("ops-v1-040", catalog=catalog)
+    # Counterfactual control: deployment metadata but no fault and no degradation.
+    counterfactual = scenario_by_id(catalog, "ops-v1-040")
     assert counterfactual.ground_truth.primary_root_cause_code == "no_fault"
     assert_timeline_contract(counterfactual)
     assert_public_boundary(counterfactual)
@@ -190,8 +199,8 @@ async def main() -> None:
     assert_restored()
 
     # Compound: pre-existing memory leak plus later acute N+1. Both faults must coexist,
-    # both evidence families must be observable, and labels must distinguish primary/secondary.
-    compound = scenario_by_id("ops-v1-043", catalog=catalog)
+    # both evidence families must be observable, and labels must separate primary/secondary.
+    compound = scenario_by_id(catalog, "ops-v1-043")
     assert compound.difficulty == Difficulty.COMPOUND
     assert compound.ground_truth.primary_root_cause_code == "n_plus_one_query"
     assert compound.ground_truth.secondary_root_cause_codes == ["memory_leak"]
@@ -206,8 +215,8 @@ async def main() -> None:
     assert_restored()
 
     print(
-        "Phase 6 live BenchmarkLab smoke passed: "
-        "easy, medium, hard, adversarial, counterfactual, compound, reproducibility, restoration"
+        "Phase 6 live BenchmarkLab smoke passed: easy, medium, hard, adversarial, "
+        "counterfactual, compound, reproducibility, restoration"
     )
 
 
