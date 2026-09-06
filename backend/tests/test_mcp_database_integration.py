@@ -1,7 +1,7 @@
 import os
 
-import pytest
 import psycopg
+import pytest
 
 from app.config import Settings
 from app.mcp.models import ExecuteSqlArgs, PermissionSet
