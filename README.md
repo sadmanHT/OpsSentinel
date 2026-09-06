@@ -20,8 +20,9 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 3 — MCP Investigation Tooling and Safety Boundary:** cumulative gate passed.
 - ✅ **Phase 4 — First Autonomous Agent and Evidence-Driven Reasoning:** cumulative gate passed.
 - ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
-- ✅ **Phase 6 — BenchmarkLab:** implementation, documentation-inclusive branch gates, PR #8 merge, and the complete post-merge Phase 1–6 cumulative gate passed on `main`. This final status-only commit must also retain green CI before Phase 7 work begins. See `docs/phase-6-handoff.md`.
-- Phases 7–10 remain gated behind successful completion of all prior phases.
+- ✅ **Phase 6 — BenchmarkLab:** fully closed; PR #8 merged and the complete post-merge Phase 1–6 cumulative gate passed on `main`. See `docs/phase-6-handoff.md`.
+- 🚧 **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** implementation and code-complete clean-state branch validation have passed, including live representative and counterfactual evaluation. Documentation-inclusive branch validation, PR merge, and post-merge `main` proof remain required before closure. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
+- Phases 8–10 remain gated behind successful completion of Phase 7.
 
 ## Stack in use
 
@@ -60,10 +61,10 @@ Useful endpoints after startup:
 - payment telemetry: `http://localhost:8103/telemetry`
 - worker telemetry: `http://localhost:8104/telemetry`
 
-Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations. Phase 6 adds a deterministic 50-scenario BenchmarkLab catalog, structural holdouts, temporal/adversarial/counterfactual/compound cases, leakage and reproducibility checks, independent scenario launch/cleanup, and a live benchmark-to-agent E2E inside the cumulative gate.
+Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations. Phase 6 adds a deterministic 50-scenario BenchmarkLab catalog, structural holdouts, temporal/adversarial/counterfactual/compound cases, leakage and reproducibility checks, independent scenario launch/cleanup, and a live benchmark-to-agent E2E. Phase 7 adds deterministic RCA/compound/evidence/efficiency/safety scoring, confidence calibration with Brier/ECE/reliability diagrams, persisted failure classifications and traces, five-tier live measurement, and a four-variant live counterfactual causal-consistency experiment. All are exercised in the cumulative clean-state gate.
 
 ## Research integrity
 
-Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, or benchmark ground truth must never be modified merely to force a preferred research result. Negative or surprising findings are valid when the experiment is correct.
+Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, scoring rules, or benchmark ground truth must never be modified merely to force a preferred research result. Negative or surprising findings are valid when the experiment is correct.
 
-See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, `docs/phase-5-handoff.md`, and `docs/phase-6-handoff.md`.
+See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, `docs/phase-5-handoff.md`, `docs/phase-6-handoff.md`, `docs/evaluationlab.md`, and `docs/phase-7-handoff.md`.

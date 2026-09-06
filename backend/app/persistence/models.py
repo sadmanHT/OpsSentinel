@@ -136,10 +136,15 @@ class EvaluationScoreRecord(Base):
     evaluation_run_id: Mapped[str] = mapped_column(
         ForeignKey("evaluation_runs.id", ondelete="CASCADE")
     )
+    agent_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL")
+    )
     scenario_id: Mapped[str] = mapped_column(String(120), nullable=False)
     metric_name: Mapped[str] = mapped_column(String(120), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    trace: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    failure_categories: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class ExperimentMetadataRecord(Base):
