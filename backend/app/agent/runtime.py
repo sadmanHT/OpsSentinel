@@ -271,7 +271,11 @@ class AgentRuntime:
         )
         if state.plan is not None:
             for step in state.plan.steps:
-                if not step.completed and step.tool == invocation.tool and step.arguments == invocation.arguments:
+                if (
+                    not step.completed
+                    and step.tool == invocation.tool
+                    and step.arguments == invocation.arguments
+                ):
                     step.completed = True
                     break
         return self._checkpoint(state, AgentNode.STORE_EVIDENCE)
@@ -383,7 +387,9 @@ class AgentRuntime:
         diagnosis = state.final_diagnosis
         if diagnosis is None:
             diagnosis = Diagnosis(
-                primary_root_cause="Investigation stopped before a primary root cause could be established.",
+                primary_root_cause=(
+                    "Investigation stopped before a primary root cause could be established."
+                ),
                 confidence=state.confidence,
                 evidence_ids=[item.id for item in state.evidence],
                 recommended_actions=[],

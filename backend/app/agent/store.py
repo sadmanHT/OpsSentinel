@@ -113,7 +113,9 @@ class SqlAgentStore:
                         root_cause_code=item.root_cause_code,
                         confidence=item.confidence,
                         supporting_evidence=[str(value) for value in item.supporting_evidence],
-                        contradicting_evidence=[str(value) for value in item.contradicting_evidence],
+                        contradicting_evidence=[
+                            str(value) for value in item.contradicting_evidence
+                        ],
                         first_possible_cause_time=item.first_possible_cause_time,
                         effect_time=item.effect_time,
                         status=item.status.value,

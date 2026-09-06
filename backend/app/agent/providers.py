@@ -11,8 +11,8 @@ from app.agent.models import (
     AgentState,
     InvestigationPlan,
     PlanStep,
-    ProviderUsage,
     ProposedAction,
+    ProviderUsage,
 )
 from app.models.domain import (
     Diagnosis,
@@ -303,7 +303,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "n_plus_one_query",
-                    "Checkout performs excessive per-request database queries consistent with an N+1 query regression.",
+                    (
+                        "Checkout performs excessive per-request database queries "
+                        "consistent with an N+1 query regression."
+                    ),
                     0.97,
                     n1_support,
                 )
@@ -312,7 +315,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "n_plus_one_query",
-                    "Checkout database query fan-out is abnormally high and may indicate an N+1 query regression.",
+                    (
+                        "Checkout database query fan-out is abnormally high and may "
+                        "indicate an N+1 query regression."
+                    ),
                     0.72,
                     n1_support,
                 )
@@ -331,7 +337,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "database_connection_leak",
-                    "Inventory exhausts its database connection capacity, consistent with a connection leak.",
+                    (
+                        "Inventory exhausts its database connection capacity, "
+                        "consistent with a connection leak."
+                    ),
                     0.96,
                     connection_support,
                 )
@@ -344,7 +353,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "disk_exhaustion",
-                    "Worker disk capacity is exhausted and requests fail with insufficient-storage errors.",
+                    (
+                        "Worker disk capacity is exhausted and requests fail with "
+                        "insufficient-storage errors."
+                    ),
                     0.99,
                     disk_support,
                 )
@@ -371,7 +383,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "memory_leak",
-                    "Worker resource growth culminates in a restart and 503 failure, consistent with a memory leak.",
+                    (
+                        "Worker resource growth culminates in a restart and 503 failure, "
+                        "consistent with a memory leak."
+                    ),
                     0.95,
                     memory_support,
                 )
@@ -392,7 +407,10 @@ class DeterministicReasoningProvider:
             hypotheses.append(
                 _hypothesis(
                     "broken_payment_configuration",
-                    "Payment rejects requests with authentication/configuration failures and the gateway surfaces the dependency failure.",
+                    (
+                        "Payment rejects requests with authentication/configuration "
+                        "failures and the gateway surfaces the dependency failure."
+                    ),
                     0.97,
                     payment_401 + gateway_502,
                 )
@@ -469,23 +487,39 @@ class DeterministicReasoningProvider:
         )
         actions = {
             "n_plus_one_query": (
-                "Review the recent checkout data-access change and replace repeated per-item queries with an eager-loaded or batched query, then rerun latency and query-count verification.",
+                (
+                    "Review the recent checkout data-access change and replace repeated "
+                    "per-item queries with an eager-loaded or batched query, then rerun "
+                    "latency and query-count verification."
+                ),
                 RiskLevel.R2,
             ),
             "database_connection_leak": (
-                "Fix inventory connection lifecycle handling and verify connections are released on success and failure paths.",
+                (
+                    "Fix inventory connection lifecycle handling and verify connections "
+                    "are released on success and failure paths."
+                ),
                 RiskLevel.R2,
             ),
             "disk_exhaustion": (
-                "Free or rotate worker output safely, then add bounded retention and disk-pressure protection.",
+                (
+                    "Free or rotate worker output safely, then add bounded retention and "
+                    "disk-pressure protection."
+                ),
                 RiskLevel.R2,
             ),
             "memory_leak": (
-                "Identify the retained worker allocation path, bound or release retained objects, and verify memory remains stable under repeated work.",
+                (
+                    "Identify the retained worker allocation path, bound or release "
+                    "retained objects, and verify memory remains stable under repeated work."
+                ),
                 RiskLevel.R2,
             ),
             "broken_payment_configuration": (
-                "Correct the payment authentication/configuration value through the approved deployment process and verify both payment and gateway health.",
+                (
+                    "Correct the payment authentication/configuration value through the "
+                    "approved deployment process and verify both payment and gateway health."
+                ),
                 RiskLevel.R2,
             ),
         }

@@ -77,7 +77,10 @@ class DuplicatePlanProvider(DeterministicReasoningProvider):
         arguments = {"service": state.incident.service, "metric": "p95_latency"}
         return (
             InvestigationPlan(
-                summary="Deliberately repeat one legal tool call to exercise the repetition budget.",
+                summary=(
+                    "Deliberately repeat one legal tool call to exercise the repetition "
+                    "budget."
+                ),
                 steps=[
                     PlanStep(
                         id="first",
