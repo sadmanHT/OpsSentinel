@@ -3,8 +3,10 @@ from collections import Counter, defaultdict
 from benchmarklab import load_catalog
 from benchmarklab.models import BenchmarkSplit, Difficulty, ScenarioKind
 from benchmarklab.validation import (
+    NO_FAULT_EVIDENCE,
     RELEASE_DIFFICULTY_COUNTS,
     RELEASE_SPLIT_COUNTS,
+    REQUIRED_EVIDENCE_BY_FAULT,
     validate_release_catalog,
 )
 
@@ -27,6 +29,19 @@ def test_release_catalog_is_reproducible() -> None:
 def test_every_scenario_passes_release_validation() -> None:
     catalog = load_catalog(validate_release=False)
     validate_release_catalog(catalog)
+
+
+def test_every_scenario_declares_required_primitive_evidence() -> None:
+    catalog = load_catalog()
+    for scenario in catalog.scenarios:
+        declared = set(scenario.ground_truth.critical_evidence_tags)
+        if not scenario.faults:
+            assert NO_FAULT_EVIDENCE <= declared
+            continue
+        required: set[str] = set()
+        for fault in scenario.faults:
+            required.update(REQUIRED_EVIDENCE_BY_FAULT[fault.fault])
+        assert required <= declared
 
 
 def test_structural_families_are_held_out_by_split() -> None:
