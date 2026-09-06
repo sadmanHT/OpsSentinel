@@ -40,7 +40,7 @@ FAULTS: dict[str, dict[str, Any]] = {
     "memory_leak": {
         "service": "worker",
         "configuration": {"chunk_bytes": 262_144, "max_bytes": 1_048_576},
-        "stimulus": ("worker", "POST", "/work", 4, 503),
+        "stimulus": ("worker", "POST", "/work", 3, 503),
         "evidence": ["metric:memory_usage", "metric:container_restarts"],
     },
 }
