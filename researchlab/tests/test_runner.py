@@ -107,3 +107,45 @@ async def test_split_mismatch_fails_before_any_trial_executes() -> None:
 
     assert executor.calls == []
     assert store.records == {}
+
+
+@pytest.mark.asyncio
+async def test_selected_cell_runs_without_executing_other_treatment(
+    easy_scenario: ScenarioRef,
+) -> None:
+    plan = build_phase8_plans()[0]
+    executor = RecordingExecutor()
+    store = InMemoryTrialStore()
+    runner = ExperimentRunner()
+
+    records = await runner.run(
+        plan,
+        [easy_scenario],
+        executor,
+        store,
+        cell_ids=["planner"],
+    )
+
+    assert len(records) == 1
+    assert records[0].identity.cell_id == "planner"
+    assert len(executor.calls) == 1
+
+
+def test_selected_cells_preserve_plan_order_and_reject_unknown_ids(
+    easy_scenario: ScenarioRef,
+) -> None:
+    plan = build_phase8_plans()[0]
+    runner = ExperimentRunner()
+
+    trials = runner.enumerate_trials(
+        plan,
+        [easy_scenario],
+        cell_ids=["planner", "reactive"],
+    )
+    assert [cell.id for _, _, cell in trials] == ["reactive", "planner"]
+
+    with pytest.raises(ValueError, match="unknown experiment cell ids"):
+        runner.enumerate_trials(plan, [easy_scenario], cell_ids=["does-not-exist"])
+
+    with pytest.raises(ValueError, match="must be unique"):
+        runner.enumerate_trials(plan, [easy_scenario], cell_ids=["planner", "planner"])
