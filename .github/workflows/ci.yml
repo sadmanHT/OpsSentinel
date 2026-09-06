@@ -59,8 +59,9 @@ jobs:
         working-directory: backend
         run: |
           python -c "from app.main import app; assert app.title == 'OpsSentinel API'; assert app.version == '0.3.0'"
-          python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 10"
+          python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 16"
           python -c "from app.agent.runtime import AgentRuntime; assert AgentRuntime.architecture_version == 'phase4-single-agent-v1'"
+          python -c "from app.agent.phase5_runtime import Phase5Runtime; assert Phase5Runtime.architecture_version == 'phase5-safe-operational-agent-v1'"
       - name: Migration upgrade
         run: alembic upgrade head
         working-directory: backend
