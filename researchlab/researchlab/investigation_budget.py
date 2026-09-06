@@ -92,7 +92,9 @@ class InvestigationBudgetReport(BudgetReportModel):
 def validation_scenarios(catalog: BenchmarkCatalog) -> list[ScenarioRef]:
     refs = scenario_refs_from_benchmark(catalog.scenarios, split=ExperimentSplit.VALIDATION)
     if len(refs) != 10:
-        raise ValueError(f"H2 requires the complete 10-scenario validation split; found {len(refs)}")
+        raise ValueError(
+            f"H2 requires the complete 10-scenario validation split; found {len(refs)}"
+        )
     return refs
 
 
@@ -230,9 +232,7 @@ def _aggregate(
         exact_match_rate=fmean(item.exact_match for item in group),
         negative_control_n=len(controls),
         false_positive_count=false_positive_count,
-        false_positive_rate=(
-            false_positive_count / len(controls) if controls else None
-        ),
+        false_positive_rate=(false_positive_count / len(controls) if controls else None),
         mean_distractor_selection_rate=fmean(
             item.distractor_selection_rate for item in group
         ),
@@ -291,7 +291,10 @@ def build_investigation_budget_report(
     )
     expected_count = len(BUDGETS) * len(scenario_ids)
     if len(observations) != expected_count:
-        raise ValueError(f"H2 report requires {expected_count} observations; found {len(observations)}")
+        raise ValueError(
+            f"H2 report requires {expected_count} observations; "
+            f"found {len(observations)}"
+        )
     if len({item.trial_id for item in observations}) != expected_count:
         raise ValueError("H2 report contains duplicate trial identities")
 
