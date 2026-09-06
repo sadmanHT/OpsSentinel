@@ -9,6 +9,7 @@ description = "Controlled experiment orchestration for OpsSentinel Phase 8"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.7,<3",
+  "sqlalchemy>=2.0,<3",
 ]
 
 [project.optional-dependencies]

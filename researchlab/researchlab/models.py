@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+MAX_DATABASE_SEED = 2_147_483_647
 
 
 class StrictModel(BaseModel):
@@ -109,7 +112,7 @@ class ExperimentPlan(StrictModel):
     split: ExperimentSplit
     cells: list[ExperimentCell] = Field(min_length=2)
     repeat_count: int = Field(default=1, ge=1, le=100)
-    seed_base: int = Field(default=8000, ge=0)
+    seed_base: int = Field(default=8000, ge=0, le=MAX_DATABASE_SEED)
 
     @model_validator(mode="after")
     def validate_controlled_comparison(self) -> ExperimentPlan:
@@ -147,6 +150,7 @@ class ExperimentPlan(StrictModel):
 
 class ScenarioRef(StrictModel):
     scenario_id: str = Field(min_length=1, max_length=120)
+    scenario_version: str = Field(default="1.0.0", min_length=1, max_length=40)
     split: ExperimentSplit
     difficulty: Difficulty
 
@@ -157,13 +161,28 @@ class TrialIdentity(StrictModel):
     experiment: ExperimentKind
     cell_id: str
     scenario_id: str
+    scenario_version: str
+    dataset_version: str
+    split: ExperimentSplit
+    difficulty: Difficulty
     repeat_index: int = Field(ge=0)
-    seed: int = Field(ge=0)
+    seed: int = Field(ge=0, le=MAX_DATABASE_SEED)
+    configuration: ResearchConfiguration
+    configuration_hash: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+
+
+def configuration_fingerprint(configuration: ResearchConfiguration) -> str:
+    payload = json.dumps(
+        configuration.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def _stable_seed(seed_base: int, key: str) -> int:
     digest = hashlib.sha256(f"{seed_base}:{key}".encode()).digest()
-    return seed_base + int.from_bytes(digest[:4], "big")
+    return (seed_base + int.from_bytes(digest[:8], "big")) % (MAX_DATABASE_SEED + 1)
 
 
 def make_trial_identity(
@@ -184,15 +203,35 @@ def make_trial_identity(
             f"scenario {scenario.scenario_id} difficulty {scenario.difficulty.value} "
             f"is not enabled for cell {cell.id}"
         )
-    key = f"{plan.id}:{cell.id}:{scenario.scenario_id}:{repeat_index}"
+
+    configuration_hash = configuration_fingerprint(cell.configuration)
+    key = ":".join(
+        (
+            plan.id,
+            plan.experiment.value,
+            plan.dataset_version,
+            plan.split.value,
+            cell.id,
+            scenario.scenario_id,
+            scenario.scenario_version,
+            str(repeat_index),
+            configuration_hash,
+        )
+    )
     return TrialIdentity(
         trial_id=uuid5(NAMESPACE_URL, f"opssentinel:phase8:{key}"),
         plan_id=plan.id,
         experiment=plan.experiment,
         cell_id=cell.id,
         scenario_id=scenario.scenario_id,
+        scenario_version=scenario.scenario_version,
+        dataset_version=plan.dataset_version,
+        split=plan.split,
+        difficulty=scenario.difficulty,
         repeat_index=repeat_index,
         seed=_stable_seed(plan.seed_base, key),
+        configuration=cell.configuration.model_copy(deep=True),
+        configuration_hash=configuration_hash,
     )
 
 
