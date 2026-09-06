@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 5 implementation and the complete pre-merge Phase 1–5 cumulative validation gate have passed on `phase-5-closeout`. Merge to `main` and post-merge `main` revalidation remain required before Phase 6 may rely on this handoff as final.
+**Phase 5 is fully closed.** PR #7 was merged to `main` at `f7b8731651758b8516d3e69ab915a31f661e2f90`, and post-merge CI run **#79** passed the complete Phase 1–5 cumulative gate on that exact commit. Phase 6 may rely on the guarantees recorded in this handoff.
 
 ## Implementation summary
 
@@ -49,7 +49,7 @@ The closeout branch adds the literal Phase 5 specification coverage that was mis
 
 No new Phase 5 closeout database migration was required by PR #7. Existing Phase 5 persistence schema and configuration remain authoritative.
 
-CI clean-state validation continues to apply migrations from zero and verifies rollback/re-upgrade behavior.
+CI clean-state validation applies migrations from zero and verifies rollback/re-upgrade behavior.
 
 ## Validation commands and gates
 
@@ -84,7 +84,20 @@ CI run **#75** on closeout head `1ec73afd393446c1950b9288205d9aa7c0f80646` passe
 - **frontend: PASS** — production build;
 - **compose: PASS** — Compose-file validation, image build, clean-state cumulative Phase 1–5 integration gate, restart cleanup regression, and clean teardown.
 
-The clean-state cumulative gate includes the accumulated Phase 2, Phase 3, Phase 4, and Phase 5 smoke flows and the Phase 5 rejected-action matrix.
+The documentation-inclusive closeout head `34524696ccebe0a1855583583a6ab8110f68aae9` then passed the same complete gate in CI run **#78** before merge.
+
+## Post-merge `main` validation results
+
+PR #7 was merged to `main` at commit `f7b8731651758b8516d3e69ab915a31f661e2f90`.
+
+Push-triggered CI run **#79** on that exact `main` commit passed all four jobs:
+
+- **backend: PASS** — Ruff, strict mypy, unit tests, startup/import smoke, migration upgrade, integration tests, migration rollback/re-upgrade, and cleanup;
+- **chaoslab: PASS** — Ruff, unit tests, and import smoke tests;
+- **frontend: PASS** — production build;
+- **compose: PASS** — Compose validation/build, clean-state cumulative Phase 1–5 integration gate, restart cleanup regression, and clean teardown.
+
+This is the final Phase 5 cumulative completion proof required before Phase 6 may consume Phase 5 guarantees.
 
 ## Phase 5 required behavior demonstrated
 
@@ -103,7 +116,7 @@ The clean-state cumulative gate includes the accumulated Phase 2, Phase 3, Phase
 
 ## Exact Phase 6 prerequisites
 
-Phase 6 may rely on the following only after PR #7 is merged and the same cumulative gate is green on `main`:
+Phase 6 may now rely on:
 
 - stable typed incident/evidence/hypothesis/action/approval/checkpoint contracts;
 - constrained MCP tool access and R0–R3 safety enforcement;
@@ -116,4 +129,4 @@ Phase 6 may rely on the following only after PR #7 is merged and the same cumula
 
 ## Final closeout condition
 
-Do not treat this handoff as final until PR #7 is merged and post-merge `main` CI passes the complete Phase 1–5 gate. At that point Phase 5 is fully closed and Phase 6 may consume these guarantees.
+Satisfied. PR #7 is merged and post-merge `main` CI run #79 passed the complete Phase 1–5 cumulative gate. **Phase 5 is fully complete and closed.**
