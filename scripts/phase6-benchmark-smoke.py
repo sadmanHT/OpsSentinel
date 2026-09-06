@@ -12,6 +12,7 @@ from benchmarklab.validation import (
     validate_agent_payload_is_public_only,
     validate_release_catalog,
 )
+
 from benchmarklab import BenchmarkRunner, load_catalog, scenario_by_id
 
 CONTROLLER = "http://127.0.0.1:8100"
