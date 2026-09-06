@@ -43,3 +43,4 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.11"
 strict = true
 packages = ["researchlab"]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/../benchmarklab:$MYPY_CONFIG_FILE_DIR/../evaluationlab"
