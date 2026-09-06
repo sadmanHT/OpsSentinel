@@ -15,7 +15,8 @@ from app.agent.runtime import AgentRuntime
 from app.agent.service import AgentService
 from app.agent.store import InMemoryAgentStore
 from app.config import Settings
-from app.mcp.models import EvidenceEnvelope, ToolInvocation, ToolResponse
+from app.mcp.models import EvidenceEnvelope, PermissionSet, ToolInvocation, ToolResponse
+from app.mcp.registry import ToolRegistry
 from app.models.domain import (
     AgentRunStatus,
     EvidenceType,
@@ -27,8 +28,20 @@ from app.models.domain import (
 )
 
 
-class ArchitectureRegistry:
-    async def invoke(self, invocation: ToolInvocation) -> ToolResponse:
+class ArchitectureRegistry(ToolRegistry):
+    def __init__(self) -> None:
+        super().__init__(
+            timeout_seconds=1.0,
+            max_output_bytes=64_000,
+            permissions=PermissionSet(principal="phase8-architecture-test"),
+        )
+
+    async def invoke(
+        self,
+        invocation: ToolInvocation,
+        *,
+        trusted_approval_id: str | None = None,
+    ) -> ToolResponse:
         now = utc_now()
         service = invocation.arguments.get("service")
         if invocation.tool == "query_metrics":
@@ -81,7 +94,7 @@ def checkout_incident() -> Incident:
 async def test_reactive_runtime_replans_after_each_observation() -> None:
     explicit_provider = CountingProvider()
     explicit = AgentRuntime(
-        registry=ArchitectureRegistry(),  # type: ignore[arg-type]
+        registry=ArchitectureRegistry(),
         provider=explicit_provider,
         store=InMemoryAgentStore(),
     )
@@ -90,7 +103,7 @@ async def test_reactive_runtime_replans_after_each_observation() -> None:
     reactive_base = CountingProvider()
     reactive_provider = ReactiveReasoningProvider(reactive_base)
     reactive = ReactiveAgentRuntime(
-        registry=ArchitectureRegistry(),  # type: ignore[arg-type]
+        registry=ArchitectureRegistry(),
         provider=reactive_provider,
         store=InMemoryAgentStore(),
     )
@@ -120,7 +133,7 @@ def test_agent_service_defaults_to_explicit_planner() -> None:
     service = AgentService(
         settings=Settings(agent_architecture="explicit_planner"),
         engine=create_engine("sqlite:///:memory:"),
-        registry=ArchitectureRegistry(),  # type: ignore[arg-type]
+        registry=ArchitectureRegistry(),
         provider=DeterministicReasoningProvider(),
     )
 
@@ -133,7 +146,7 @@ def test_agent_service_selects_reactive_architecture() -> None:
     service = AgentService(
         settings=Settings(agent_architecture="reactive_react"),
         engine=create_engine("sqlite:///:memory:"),
-        registry=ArchitectureRegistry(),  # type: ignore[arg-type]
+        registry=ArchitectureRegistry(),
         provider=DeterministicReasoningProvider(),
     )
 

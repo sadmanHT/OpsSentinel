@@ -134,6 +134,23 @@ class ReactiveAgentRuntime(AgentRuntime):
                 return self._checkpoint(state, AgentNode.REPORT)
         return await super()._select_tool({"state": state})
 
+    async def _enough_evidence(self, payload: GraphPayload) -> GraphPayload:
+        state = self._copy(payload)
+        try:
+            enough, usage = await self.provider.enough_evidence(state)
+        except ReasoningProviderError as exc:
+            self._provider_failure(state, exc)
+            return self._checkpoint(state, AgentNode.REPORT)
+        if not self._apply_usage(state, usage):
+            return self._checkpoint(state, AgentNode.REPORT)
+        if enough:
+            return self._checkpoint(state, AgentNode.DIAGNOSE)
+        reason = self._budget_reason(state)
+        if reason is not None:
+            self._mark_exhausted(state, reason)
+            return self._checkpoint(state, AgentNode.REPORT)
+        return self._checkpoint(state, AgentNode.SELECT_TOOL)
+
 
 class ReactivePhase5Runtime(Phase5Runtime):
     """Phase 5 safety wrapper using the reactive investigator below it."""
