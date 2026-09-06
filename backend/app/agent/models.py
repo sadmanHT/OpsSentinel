@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import Field, model_validator
 
@@ -34,6 +34,22 @@ class AgentNode(StrEnum):
     RECOMMEND = "recommend"
     REPORT = "report"
     END = "end"
+
+
+class OperationStage(StrEnum):
+    NONE = "none"
+    ASSESS_ACTION = "assess_action"
+    WAIT_APPROVAL = "wait_approval"
+    EXECUTE_ACTION = "execute_action"
+    VERIFY = "verify"
+    COMPLETE = "complete"
+
+
+class ApprovalDecision(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ABANDONED = "abandoned"
 
 
 class PlanStep(StrictModel):
@@ -81,6 +97,47 @@ class ProposedAction(StrictModel):
     risk_level: RiskLevel
     rationale: str = Field(min_length=1)
     evidence_ids: list[UUID] = Field(min_length=1)
+    tool: str | None = Field(default=None, max_length=120)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    expected_benefit: str = "Restore the affected sandbox service to a healthy state."
+    possible_risk: str = "The reversible sandbox action may interrupt in-flight test traffic."
+    rollback_strategy: str = (
+        "Restore the previous sandbox state or reinject the scenario if needed."
+    )
+
+
+class ApprovalRequest(StrictModel):
+    id: UUID = Field(default_factory=uuid4)
+    action: ProposedAction
+    why_proposed: str = Field(min_length=1)
+    evidence_ids: list[UUID] = Field(min_length=1)
+    expected_benefit: str = Field(min_length=1)
+    possible_risk: str = Field(min_length=1)
+    rollback_strategy: str = Field(min_length=1)
+    decision: ApprovalDecision = ApprovalDecision.PENDING
+    created_at: datetime = Field(default_factory=utc_now)
+    decided_at: datetime | None = None
+    decided_by: str | None = Field(default=None, max_length=120)
+
+
+class ApprovalDecisionRequest(StrictModel):
+    decision: ApprovalDecision
+    actor: str = Field(min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def reject_pending_decision(self) -> ApprovalDecisionRequest:
+        if self.decision == ApprovalDecision.PENDING:
+            raise ValueError("approval decision must be approved, rejected, or abandoned")
+        return self
+
+
+class ToolFailureRecord(StrictModel):
+    tool: str = Field(min_length=1, max_length=120)
+    code: str = Field(min_length=1, max_length=80)
+    message: str = Field(min_length=1, max_length=500)
+    retryable: bool = False
+    attempt: int = Field(default=1, ge=1)
+    recorded_at: datetime = Field(default_factory=utc_now)
 
 
 class VerificationResult(StrictModel):
@@ -120,6 +177,8 @@ class AgentState(StrictModel):
     incident: Incident
     status: AgentRunStatus = AgentRunStatus.CREATED
     next_node: AgentNode = AgentNode.TRIAGE
+    operational_mode: bool = False
+    operation_stage: OperationStage = OperationStage.NONE
     plan: InvestigationPlan | None = None
     evidence: list[Evidence] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(default_factory=list)
@@ -128,11 +187,14 @@ class AgentState(StrictModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     budget: AgentBudget
     proposed_action: ProposedAction | None = None
+    approval: ApprovalRequest | None = None
     verification: VerificationResult = Field(
-        default_factory=lambda: VerificationResult(
-            summary="No verification has been run in Phase 4."
-        )
+        default_factory=lambda: VerificationResult(summary="No verification has been run.")
     )
+    action_response: ToolResponse | None = None
+    failures: list[ToolFailureRecord] = Field(default_factory=list)
+    retry_counts: dict[str, int] = Field(default_factory=dict)
+    non_progress_count: int = Field(default=0, ge=0)
     diagnosis_code: str | None = None
     final_diagnosis: Diagnosis | None = None
     report: AgentReport | None = None
@@ -147,6 +209,7 @@ class StartInvestigationRequest(StrictModel):
     incident: Incident
     budget: AgentBudget | None = None
     pause_after: AgentNode | None = None
+    operational_mode: bool = False
 
     @model_validator(mode="after")
     def validate_pause_target(self) -> StartInvestigationRequest:
@@ -160,12 +223,18 @@ class AgentRunView(StrictModel):
     incident: Incident
     status: AgentRunStatus
     next_node: AgentNode
+    operational_mode: bool
+    operation_stage: OperationStage
     plan: InvestigationPlan | None
     evidence: list[Evidence]
     hypotheses: list[Hypothesis]
     tool_history: list[ToolCall]
     confidence: float
     budget: AgentBudget
+    proposed_action: ProposedAction | None
+    approval: ApprovalRequest | None
+    verification: VerificationResult
+    failures: list[ToolFailureRecord]
     diagnosis_code: str | None
     final_diagnosis: Diagnosis | None
     report: AgentReport | None
@@ -178,12 +247,18 @@ class AgentRunView(StrictModel):
             incident=state.incident,
             status=state.status,
             next_node=state.next_node,
+            operational_mode=state.operational_mode,
+            operation_stage=state.operation_stage,
             plan=state.plan,
             evidence=state.evidence,
             hypotheses=state.hypotheses,
             tool_history=state.tool_history,
             confidence=state.confidence,
             budget=state.budget,
+            proposed_action=state.proposed_action,
+            approval=state.approval,
+            verification=state.verification,
+            failures=state.failures,
             diagnosis_code=state.diagnosis_code,
             final_diagnosis=state.final_diagnosis,
             report=state.report,

@@ -59,8 +59,9 @@ jobs:
         working-directory: backend
         run: |
           python -c "from app.main import app; assert app.title == 'OpsSentinel API'; assert app.version == '0.3.0'"
-          python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 10"
+          python -c "from app.mcp.registry import build_registry; assert len(build_registry().definitions()) == 16"
           python -c "from app.agent.runtime import AgentRuntime; assert AgentRuntime.architecture_version == 'phase4-single-agent-v1'"
+          python -c "from app.agent.phase5_runtime import Phase5Runtime; assert Phase5Runtime.architecture_version == 'phase5-safe-operational-agent-v1'"
       - name: Migration upgrade
         run: alembic upgrade head
         working-directory: backend
@@ -159,13 +160,15 @@ jobs:
           python scripts/phase2-smoke.py
           python scripts/phase3-mcp-smoke.py
           python scripts/phase4-agent-smoke.py
+          python scripts/phase5-operational-smoke.py
+          python scripts/phase5-approval-negative-smoke.py
 
           checkpoint_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM agent_checkpoints;")
           diagnosis_count=$(docker compose exec -T postgres psql -U opssentinel -d opssentinel -tAc \
             "SELECT COUNT(*) FROM diagnoses;")
-          test "$checkpoint_count" -ge 5
-          test "$diagnosis_count" -ge 5
+          test "$checkpoint_count" -ge 13
+          test "$diagnosis_count" -ge 13
 
           docker compose exec -T gateway python - <<'PY'
           import asyncio
@@ -180,7 +183,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:8101/metrics | grep chaoslab_db_queries_last_request
           curl --fail --silent http://127.0.0.1:8102/metrics | grep chaoslab_simulated_db_connections
           curl --fail --silent http://127.0.0.1:8000/mcp/tools | grep search_logs
-          curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase4-single-agent-v1
+          curl --fail --silent http://127.0.0.1:8000/agent/health | grep phase5-safe-operational-agent-v1
 
           docker compose ps
           docker compose logs backend --no-color > /tmp/opssentinel-backend.log
