@@ -138,9 +138,10 @@ class ExperimentPlan(StrictModel):
                 f"{self.experiment.value} must contain at least two distinct {target} values"
             )
 
-        if self.experiment == ExperimentKind.COMPOUND_HANDLING:
-            if any(cell.difficulties != [Difficulty.COMPOUND] for cell in self.cells):
-                raise ValueError("compound handling cells must target only compound incidents")
+        if self.experiment == ExperimentKind.COMPOUND_HANDLING and any(
+            cell.difficulties != [Difficulty.COMPOUND] for cell in self.cells
+        ):
+            raise ValueError("compound handling cells must target only compound incidents")
         return self
 
 
