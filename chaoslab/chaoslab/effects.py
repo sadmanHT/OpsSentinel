@@ -1,5 +1,4 @@
 import asyncio
-import random
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -7,11 +6,10 @@ from fastapi import HTTPException
 from chaoslab.models import FaultState, FaultType, Severity
 from chaoslab.runtime import RuntimeState
 
-SEVERITY_SCALE = {Severity.P1: 1.0, Severity.P2: 0.7, Severity.P3: 0.45}
-
-
-def deterministic_rng(state: FaultState, request_count: int) -> random.Random:
-    return random.Random(f"{state.seed}:{state.generation}:{request_count}:{state.service}")
+# Higher severity means greater impact for latency-style degradations.
+IMPACT_SCALE = {Severity.P1: 1.0, Severity.P2: 0.7, Severity.P3: 0.45}
+# Higher severity also means an earlier failure threshold for progressive faults.
+FAILURE_THRESHOLD_RATIO = {Severity.P1: 0.45, Severity.P2: 0.7, Severity.P3: 1.0}
 
 
 async def apply_pre_request_faults(
@@ -20,30 +18,33 @@ async def apply_pre_request_faults(
     disk_dir: str,
 ) -> None:
     for fault in faults:
-        scale = SEVERITY_SCALE[fault.severity]
+        threshold_ratio = FAILURE_THRESHOLD_RATIO[fault.severity]
         if fault.fault == FaultType.CONNECTION_LEAK:
             runtime.simulated_db_connections += 1
-            capacity = int(fault.configuration.get("capacity", 8))
-            if runtime.simulated_db_connections >= capacity:
+            configured_capacity = max(2, int(fault.configuration.get("capacity", 8)))
+            effective_capacity = max(2, int(configured_capacity * threshold_ratio))
+            if runtime.simulated_db_connections >= effective_capacity:
                 await asyncio.sleep(0.05)
                 raise HTTPException(status_code=503, detail="database connection pool timeout")
         elif fault.fault == FaultType.DISK_EXHAUSTION:
             root = Path(disk_dir)
             root.mkdir(parents=True, exist_ok=True)
-            max_files = int(fault.configuration.get("max_files", 10))
+            max_files = max(2, int(fault.configuration.get("max_files", 10)))
             if len(runtime.disk_files) < max_files:
                 path = root / f"debug-{fault.generation}-{len(runtime.disk_files)}.log"
                 path.write_bytes(b"x" * 32_768)
                 runtime.disk_files.append(path)
-            if len(runtime.disk_files) >= max(2, int(max_files * scale)):
+            failure_at = max(1, int(max_files * threshold_ratio))
+            if len(runtime.disk_files) >= failure_at:
                 raise HTTPException(status_code=507, detail="simulated no space left on device")
         elif fault.fault == FaultType.MEMORY_LEAK:
-            chunk_size = int(fault.configuration.get("chunk_bytes", 262_144))
-            max_bytes = int(fault.configuration.get("max_bytes", 4_194_304))
-            if runtime.simulated_memory_leak_bytes < max_bytes:
-                runtime.memory_chunks.append(b"m" * min(chunk_size, max_bytes))
-            threshold = max(1_048_576, int(max_bytes * scale))
-            if runtime.simulated_memory_leak_bytes >= threshold:
+            chunk_size = max(1, int(fault.configuration.get("chunk_bytes", 262_144)))
+            max_bytes = max(chunk_size, int(fault.configuration.get("max_bytes", 4_194_304)))
+            remaining = max(0, max_bytes - runtime.simulated_memory_leak_bytes)
+            if remaining:
+                runtime.memory_chunks.append(b"m" * min(chunk_size, remaining))
+            failure_at = max(chunk_size, int(max_bytes * threshold_ratio))
+            if runtime.simulated_memory_leak_bytes >= failure_at:
                 runtime.simulated_restarts += 1
                 runtime.memory_chunks.clear()
                 raise HTTPException(
