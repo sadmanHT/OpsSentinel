@@ -82,6 +82,7 @@ jobs:
       - name: Unit tests
         run: pytest chaoslab/tests
       - name: Import smoke tests
+        working-directory: chaoslab
         run: |
           python -c "from chaoslab import ChaosLabClient; assert ChaosLabClient"
           python -c "from chaoslab.models import FaultSpec, FaultType; assert FaultSpec(fault=FaultType.N_PLUS_ONE, service='checkout').seed == 42"
