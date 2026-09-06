@@ -20,7 +20,10 @@ from evaluationlab.models import (
 )
 
 
-def _failure_taxonomy(case: EvaluationCase, result: EvaluationResult) -> list[FailureClassification]:
+def _failure_taxonomy(
+    case: EvaluationCase,
+    result: EvaluationResult,
+) -> list[FailureClassification]:
     if result.root_cause.exact_match:
         return []
 
@@ -80,7 +83,10 @@ def _failure_taxonomy(case: EvaluationCase, result: EvaluationResult) -> list[Fa
     if not failures:
         add(
             FailureCategory.PREMATURE_CONVERGENCE,
-            "The run converged on an incorrect diagnosis without another observed failure mechanism.",
+            (
+                "The run converged on an incorrect diagnosis without another observed "
+                "failure mechanism."
+            ),
         )
     return failures
 
