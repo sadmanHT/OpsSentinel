@@ -1,5 +1,4 @@
 import asyncio
-from typing import cast
 
 import pytest
 
@@ -137,7 +136,7 @@ async def test_timeout_is_recorded_retried_and_recovers() -> None:
 @pytest.mark.asyncio
 async def test_malformed_result_becomes_failure_instead_of_escaping() -> None:
     async def malformed(_args: EmptyArgs) -> EvidenceEnvelope:
-        return cast(EvidenceEnvelope, {"malformed": True})
+        return {"malformed": True}  # type: ignore[return-value]
 
     registry = registry_for("query_metrics", RiskLevel.R0, malformed)
     registry.begin_capture()
