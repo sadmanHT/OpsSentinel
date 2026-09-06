@@ -67,4 +67,5 @@ class ServiceClient:
             raise ServiceUnavailable(f"{service} is unavailable") from exc
         finally:
             if owns_client:
+                assert client is not None
                 await client.aclose()

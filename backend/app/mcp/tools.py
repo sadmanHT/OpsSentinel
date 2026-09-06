@@ -1,11 +1,9 @@
 import asyncio
-import json
 import re
 import subprocess
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import psycopg
 from psycopg.rows import tuple_row
@@ -41,7 +39,7 @@ from app.models.domain import EvidenceType
 def _json_safe(value: object) -> object:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, (datetime,)):
+    if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, bytes):
         return value.hex()

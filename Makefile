@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help setup setup-backend setup-frontend setup-chaoslab lint typecheck test test-unit test-integration chaoslab-test frontend-build compose-validate db-upgrade db-downgrade clean-start phase2-smoke ci
+.PHONY: help setup setup-backend setup-frontend setup-chaoslab lint typecheck test test-unit test-integration chaoslab-test frontend-build compose-validate db-upgrade db-downgrade clean-start phase2-smoke phase3-smoke ci
 
 help:
 	@printf '%s\n' \
@@ -10,11 +10,12 @@ help:
 	  'test              Run backend and ChaosLab unit tests' \
 	  'test-integration  Run database integration tests (requires services)' \
 	  'phase2-smoke      Validate all five ChaosLab fault primitives (requires services)' \
+	  'phase3-smoke      Validate MCP evidence and safety boundary (requires services)' \
 	  'frontend-build    Build the React frontend' \
 	  'compose-validate  Validate Docker Compose configuration' \
 	  'db-upgrade        Apply all database migrations' \
 	  'clean-start       Rebuild and start from clean Docker state' \
-	  'ci                 Run local CI-equivalent non-container checks'
+	  'ci                Run local CI-equivalent non-container checks'
 
 setup: setup-backend setup-chaoslab setup-frontend
 
@@ -47,6 +48,9 @@ test-integration:
 phase2-smoke:
 	python scripts/phase2-smoke.py
 
+phase3-smoke:
+	python scripts/phase3-mcp-smoke.py
+
 frontend-build:
 	cd frontend && npm run build
 
@@ -62,7 +66,7 @@ db-downgrade:
 
 clean-start:
 	docker compose down -v --remove-orphans
-	docker compose build --no-cache
+	docker compose build
 	docker compose up -d
 	docker compose ps
 

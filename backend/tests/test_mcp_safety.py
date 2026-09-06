@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.mcp.errors import UnsafeOperation
+from app.mcp.errors import InvalidToolArguments, UnsafeOperation
 from app.mcp.safety import safe_relative_path, validate_git_ref, validate_readonly_sql
 
 
@@ -44,5 +44,5 @@ def test_path_traversal_is_blocked(tmp_path: Path) -> None:
 
 
 def test_git_ref_cannot_be_an_option() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidToolArguments):
         validate_git_ref("--help")

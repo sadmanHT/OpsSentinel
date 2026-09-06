@@ -2,8 +2,10 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from app.config import Settings
+from app.mcp.errors import PermissionDenied, ServiceUnavailable, UnsafeOperation
 from app.mcp.models import (
     PermissionSet,
     QueryMetricsArgs,
@@ -81,7 +83,7 @@ async def test_unavailable_service_is_reported() -> None:
             permissions(),
             ServiceClient(settings, permissions(), client),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(ServiceUnavailable):
             await tools.search_logs(SearchLogsArgs(service="checkout"))
 
 
@@ -89,7 +91,7 @@ async def test_unavailable_service_is_reported() -> None:
 async def test_unauthorized_service_is_rejected_before_network() -> None:
     settings = Settings()
     tools = InvestigationTools(settings, permissions())
-    with pytest.raises(Exception):
+    with pytest.raises(PermissionDenied):
         await tools.search_logs(SearchLogsArgs(service="payment"))
 
 
@@ -103,7 +105,7 @@ async def test_documentation_path_traversal_fails(tmp_path: Path) -> None:
         SearchDocumentationArgs(query="database", path="runbook.md")
     )
     assert result.payload[0]["line"] == 1
-    with pytest.raises(Exception):
+    with pytest.raises(UnsafeOperation):
         await tools.search_documentation(
             SearchDocumentationArgs(query="database", path="../secret")
         )
@@ -112,7 +114,9 @@ async def test_documentation_path_traversal_fails(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_diagnostic_shell_escape_and_arbitrary_commands_fail(tmp_path: Path) -> None:
     tools = InvestigationTools(Settings(mcp_repo_root=tmp_path), permissions())
-    with pytest.raises(Exception):
-        await tools.run_diagnostic(RunDiagnosticArgs(command="curl", service="worker", path="/;id"))
-    with pytest.raises(Exception):
+    with pytest.raises(UnsafeOperation):
+        await tools.run_diagnostic(
+            RunDiagnosticArgs(command="curl", service="worker", path="/;id")
+        )
+    with pytest.raises(ValidationError):
         RunDiagnosticArgs(command="bash")

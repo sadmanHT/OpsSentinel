@@ -8,8 +8,8 @@ from pydantic import BaseModel, ValidationError
 
 from app.config import Settings, get_settings
 from app.mcp.errors import (
-    InvestigationToolError,
     InvalidToolArguments,
+    InvestigationToolError,
     ResultTooLarge,
     ToolTimeout,
 )
