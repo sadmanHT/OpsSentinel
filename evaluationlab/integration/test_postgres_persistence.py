@@ -36,6 +36,7 @@ def test_postgres_migration_and_evaluation_persistence_round_trip() -> None:
                 scenario_id="phase7-postgres-persistence",
             )
         )
+        session.flush()
         session.add(
             AgentRunRecord(
                 id=str(agent_run_id),
