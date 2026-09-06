@@ -2,9 +2,9 @@
 
 ## Status
 
-**In progress. Phase 6 is blocked until this phase passes its cumulative gate and is revalidated on `main`.**
+**Implemented and cumulatively validated on the Phase 5 closeout branch.** The authoritative closeout record is `docs/phase-5-handoff.md`. Phase 6 may rely on Phase 5 only after the closeout PR is merged and the same Phase 1–5 gate passes on `main`.
 
-This branch starts from the completed Phase 4 commit. It exists because the repository had no Phase 5 implementation branch or merged Phase 5 PR when Phase 6 was requested.
+This plan is retained as the historical implementation specification for Phase 5.
 
 ## Objective
 
@@ -85,6 +85,10 @@ Before merge:
 10. CI-equivalent checks
 11. fix any failure and rerun the relevant chain
 
+## Validation outcome
+
+The Phase 5 closeout branch passed the complete pre-merge cumulative gate in CI run #75, including backend Ruff/mypy/unit/integration/migration checks, ChaosLab, frontend production build, the clean-state Compose Phase 1–5 integration gate, restart cleanup, and teardown. See `docs/phase-5-handoff.md` for the exact validation record and remaining post-merge boundary.
+
 ## Phase 6 boundary
 
-Only after this phase is merged and the push-triggered `main` CI is green may a Phase 6 BenchmarkLab implementation branch be created. Phase 6 may rely only on Phase 5 behavior proven by that cumulative gate.
+Only after Phase 5 closeout is merged and the push-triggered `main` CI is green may Phase 6 BenchmarkLab rely on Phase 5 behavior. Phase 6 may assume only the guarantees recorded in `docs/phase-5-handoff.md`.
