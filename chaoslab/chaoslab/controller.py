@@ -4,7 +4,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 
 from chaoslab.config import ChaosConfig
-from chaoslab.models import FaultSpec, FaultState, RestoreRequest
+from chaoslab.models import FaultSpec, FaultState, FaultType, RestoreRequest
 from chaoslab.state import FaultStore
 
 config = ChaosConfig()
@@ -19,6 +19,24 @@ SERVICE_URLS = {
     "worker": "http://worker:8080",
 }
 
+FAULT_TARGETS = {
+    FaultType.N_PLUS_ONE: {"checkout"},
+    FaultType.CONNECTION_LEAK: {"checkout", "inventory"},
+    FaultType.DISK_EXHAUSTION: set(SERVICE_URLS),
+    FaultType.BROKEN_CONFIG: {"payment"},
+    FaultType.MEMORY_LEAK: set(SERVICE_URLS),
+}
+
+
+def validate_fault_target(spec: FaultSpec) -> None:
+    if spec.service not in SERVICE_URLS:
+        raise HTTPException(status_code=422, detail="unknown service")
+    if spec.service not in FAULT_TARGETS[spec.fault]:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{spec.fault.value} is not supported for service {spec.service}",
+        )
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -27,8 +45,7 @@ def health() -> dict[str, str]:
 
 @app.post("/faults/inject", response_model=FaultState)
 def inject_fault(spec: FaultSpec) -> FaultState:
-    if spec.service not in SERVICE_URLS:
-        raise HTTPException(status_code=422, detail="unknown service")
+    validate_fault_target(spec)
     return store.inject(spec)
 
 
