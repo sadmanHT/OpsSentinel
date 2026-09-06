@@ -158,7 +158,10 @@ def _selected_tags(
     if final_diagnosis is None:
         return []
     selected: set[str] = set()
-    for evidence_id in _string_list(final_diagnosis.get("evidence_ids", []), "diagnosis.evidence_ids"):
+    for evidence_id in _string_list(
+        final_diagnosis.get("evidence_ids", []),
+        "diagnosis.evidence_ids",
+    ):
         evidence = evidence_by_id.get(evidence_id)
         if evidence is not None:
             selected.update(evidence_tags(evidence))
@@ -260,7 +263,11 @@ def adapt_benchmark_artifact(
         evidence_by_id[evidence_id] = item
 
     final_value = raw_run.get("final_diagnosis")
-    final_diagnosis = None if final_value is None else _dict(final_value, "raw_agent_run.final_diagnosis")
+    final_diagnosis = (
+        None
+        if final_value is None
+        else _dict(final_value, "raw_agent_run.final_diagnosis")
+    )
     predicted_primary = _optional_string(artifact, "diagnosis_code")
     if predicted_primary is None and final_diagnosis is not None:
         predicted_primary = _optional_string(final_diagnosis, "primary_root_cause")
