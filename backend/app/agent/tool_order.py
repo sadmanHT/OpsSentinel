@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from app.agent.models import (
@@ -114,10 +114,10 @@ class ControlledToolOrderProvider:
 
     inner: ReasoningProvider
     mode: ToolOrderMode
+    name: str = field(init=False)
 
-    @property
-    def name(self) -> str:
-        return f"{self.inner.name}+{TOOL_ORDER_PROVIDER_MARKER}:{self.mode}"
+    def __post_init__(self) -> None:
+        self.name = f"{self.inner.name}+{TOOL_ORDER_PROVIDER_MARKER}:{self.mode}"
 
     async def plan(self, state: AgentState) -> tuple[InvestigationPlan, ProviderUsage]:
         plan, usage = await self.inner.plan(state)
