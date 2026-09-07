@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from app.agent.models import (
     AgentState,
@@ -74,11 +73,7 @@ def _supporting_cause_time(
 
 
 class ExplicitTemporalReasoningProvider:
-    """Add observable cause/effect time constraints without benchmark hidden truth.
-
-    The treatment uses only the public incident onset and timestamps returned by legal
-    MCP log/metric queries. It never imports BenchmarkLab or reads fault-controller state.
-    """
+    """Add observable cause/effect constraints without using benchmark hidden truth."""
 
     def __init__(self, inner: ReasoningProvider) -> None:
         self.inner = inner
@@ -88,7 +83,9 @@ class ExplicitTemporalReasoningProvider:
         plan, usage = await self.inner.plan(state)
         effect_time = state.incident.start_time
         if effect_time.tzinfo is None or effect_time.utcoffset() is None:
-            raise ValueError("explicit temporal reasoning requires a timezone-aware incident onset")
+            raise ValueError(
+                "explicit temporal reasoning requires a timezone-aware incident onset"
+            )
         start_time = effect_time - TEMPORAL_WINDOW
         bounded = plan.model_copy(deep=True)
         for step in bounded.steps:
