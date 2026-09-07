@@ -32,6 +32,7 @@ from researchlab.models import (
 )
 
 EVALUATION_VERSION = "0.1.0"
+TEMPORAL_PROVIDER_MARKER = "temporal-cause-effect-v1"
 
 ARCHITECTURE_VERSION_BY_VARIANT: dict[ArchitectureVariant, str] = {
     ArchitectureVariant.EXPLICIT_PLANNER: "phase5-safe-operational-agent-v1",
@@ -101,10 +102,6 @@ def _validate_supported_configuration(configuration: ResearchConfiguration) -> N
         unsupported.append(f"tool_order={configuration.tool_order.value}")
     if configuration.evidence_mode != EvidenceMode.PASSIVE_ONLY:
         unsupported.append(f"evidence_mode={configuration.evidence_mode.value}")
-    if configuration.temporal_reasoning != TemporalReasoningVariant.STANDARD:
-        unsupported.append(
-            f"temporal_reasoning={configuration.temporal_reasoning.value}"
-        )
     if configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD:
         unsupported.append(
             f"stopping_strategy={configuration.stopping_strategy.value}"
@@ -189,12 +186,33 @@ class LiveTrialExecutor:
         configuration: ResearchConfiguration,
     ) -> dict[str, object]:
         health = await self.health_probe.read()
-        expected = ARCHITECTURE_VERSION_BY_VARIANT[configuration.architecture]
-        observed = health.get("architecture")
-        if observed != expected:
+        expected_architecture = ARCHITECTURE_VERSION_BY_VARIANT[configuration.architecture]
+        observed_architecture = health.get("architecture")
+        if observed_architecture != expected_architecture:
             raise TreatmentIsolationError(
                 "active agent architecture does not match the research cell: "
-                f"{observed!r} != {expected!r}"
+                f"{observed_architecture!r} != {expected_architecture!r}"
+            )
+
+        expected_temporal = configuration.temporal_reasoning.value
+        observed_temporal = health.get("temporal_reasoning")
+        if observed_temporal != expected_temporal:
+            raise TreatmentIsolationError(
+                "active temporal reasoning does not match the research cell: "
+                f"{observed_temporal!r} != {expected_temporal!r}"
+            )
+
+        provider = health.get("provider")
+        if not isinstance(provider, str):
+            raise TreatmentIsolationError("agent health did not expose a provider identity")
+        has_marker = TEMPORAL_PROVIDER_MARKER in provider
+        expects_marker = (
+            configuration.temporal_reasoning
+            == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT
+        )
+        if has_marker != expects_marker:
+            raise TreatmentIsolationError(
+                "temporal provider marker does not match the declared treatment"
             )
         return health
 
