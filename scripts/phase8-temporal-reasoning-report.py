@@ -14,14 +14,14 @@ from researchlab.temporal_reasoning import (
 def _load(path: Path) -> tuple[str, TemporalReasoningVariant, list[TrialRecord]]:
     payload = json.loads(path.read_text())
     if not isinstance(payload, dict):
-        raise ValueError(f"H3 arm artifact {path} is malformed")
+        raise TypeError(f"H3 arm artifact {path} is malformed")
     benchmark_version = payload.get("benchmark_version")
     temporal = payload.get("temporal_reasoning")
     records = payload.get("records")
     if not isinstance(benchmark_version, str) or not isinstance(temporal, str):
-        raise ValueError(f"H3 arm artifact {path} is missing provenance")
+        raise TypeError(f"H3 arm artifact {path} is missing provenance")
     if not isinstance(records, list):
-        raise ValueError(f"H3 arm artifact {path} is missing records")
+        raise TypeError(f"H3 arm artifact {path} is missing records")
     return (
         benchmark_version,
         TemporalReasoningVariant(temporal),
