@@ -30,6 +30,7 @@ from researchlab.models import (
     ExperimentSplit,
     ResearchConfiguration,
     TemporalReasoningVariant,
+    ToolOrderVariant,
     TrialIdentity,
     make_trial_identity,
 )
@@ -41,15 +42,21 @@ class FakeHealthProbe:
         architecture: str,
         *,
         temporal_reasoning: TemporalReasoningVariant = TemporalReasoningVariant.STANDARD,
+        tool_order: ToolOrderVariant = ToolOrderVariant.FREE,
+        tool_order_controlled: bool = False,
     ) -> None:
         self.architecture = architecture
         self.temporal_reasoning = temporal_reasoning
+        self.tool_order = tool_order
+        self.tool_order_controlled = tool_order_controlled
         self.calls = 0
 
     async def read(self) -> dict[str, object]:
         self.calls += 1
         explicit = self.temporal_reasoning == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT
         provider = "deterministic"
+        if self.tool_order_controlled:
+            provider += f"+tool-order-controlled-v1:{self.tool_order.value}"
         if explicit:
             provider += "+temporal-cause-effect-v1"
         return {
@@ -57,6 +64,8 @@ class FakeHealthProbe:
             "architecture": self.architecture,
             "provider": provider,
             "temporal_reasoning": self.temporal_reasoning.value,
+            "tool_order": self.tool_order.value,
+            "tool_order_controlled": self.tool_order_controlled,
             "legal_tool_count": 16,
         }
 
@@ -193,6 +202,44 @@ def _trial(
                 label="Comparison",
                 configuration=configuration.model_copy(
                     update={"tool_budget": configuration.tool_budget + 1}
+                ),
+                difficulties=[Difficulty.EASY],
+            ),
+        ],
+    )
+    reference = scenario_ref_from_benchmark(scenario)
+    return make_trial_identity(plan, cell, reference, 0), cell
+
+
+def _tool_order_trial(
+    scenario: ScenarioSpec,
+    variant: ToolOrderVariant,
+) -> tuple[TrialIdentity, ExperimentCell]:
+    configuration = ResearchConfiguration(tool_order=variant)
+    cell = ExperimentCell(
+        id="test-order",
+        label="Test order",
+        configuration=configuration,
+        difficulties=[Difficulty.EASY],
+    )
+    comparison_variant = (
+        ToolOrderVariant.DEPLOYMENT_FIRST
+        if variant == ToolOrderVariant.FREE
+        else ToolOrderVariant.FREE
+    )
+    plan = ExperimentPlan(
+        id="phase8-live-tool-order-test",
+        experiment=ExperimentKind.TOOL_ORDER,
+        hypothesis_id="H2",
+        dataset_version="ops-v1",
+        split=ExperimentSplit.DEV,
+        cells=[
+            cell,
+            ExperimentCell(
+                id="comparison-order",
+                label="Comparison order",
+                configuration=configuration.model_copy(
+                    update={"tool_order": comparison_variant}
                 ),
                 difficulties=[Difficulty.EASY],
             ),
@@ -344,6 +391,100 @@ async def test_live_executor_accepts_explicit_temporal_treatment() -> None:
         "explicit_cause_effect"
     )
     assert benchmark.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_live_executor_accepts_controlled_tool_order_treatment() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    identity, cell = _tool_order_trial(scenario, ToolOrderVariant.DEPLOYMENT_FIRST)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            tool_order=ToolOrderVariant.DEPLOYMENT_FIRST,
+            tool_order_controlled=True,
+        ),
+    )
+
+    outcome = await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert outcome.raw_trajectory["runtime_health"]["tool_order"] == "deployment_first"
+    assert outcome.raw_trajectory["runtime_health"]["tool_order_controlled"] is True
+    assert benchmark.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_live_executor_rejects_tool_order_without_controlled_runtime() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    identity, cell = _tool_order_trial(scenario, ToolOrderVariant.DEPLOYMENT_FIRST)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            tool_order=ToolOrderVariant.DEPLOYMENT_FIRST,
+            tool_order_controlled=False,
+        ),
+    )
+
+    with pytest.raises(TreatmentIsolationError, match="controlled tool-order runtime"):
+        await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert benchmark.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_live_executor_rejects_wrong_controlled_tool_order() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    identity, cell = _tool_order_trial(scenario, ToolOrderVariant.DEPLOYMENT_FIRST)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            tool_order=ToolOrderVariant.SYMPTOM_FIRST,
+            tool_order_controlled=True,
+        ),
+    )
+
+    with pytest.raises(TreatmentIsolationError, match="active tool order"):
+        await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert benchmark.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_non_tool_order_experiment_rejects_controlled_runtime() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    configuration = ResearchConfiguration(tool_budget=5)
+    identity, cell = _trial(scenario, configuration)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            tool_order=ToolOrderVariant.FREE,
+            tool_order_controlled=True,
+        ),
+    )
+
+    with pytest.raises(TreatmentIsolationError, match="controlled tool-order runtime"):
+        await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert benchmark.calls == 0
 
 
 @pytest.mark.asyncio
