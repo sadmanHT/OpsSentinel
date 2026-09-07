@@ -22,17 +22,18 @@ from researchlab.models import (
     ArchitectureVariant,
     EvidenceMode,
     ExperimentCell,
+    ExperimentKind,
     ResearchConfiguration,
     ScenarioRef,
     StoppingStrategy,
     TemporalReasoningVariant,
-    ToolOrderVariant,
     TrialIdentity,
     TrialOutcome,
 )
 
 EVALUATION_VERSION = "0.1.0"
 TEMPORAL_PROVIDER_MARKER = "temporal-cause-effect-v1"
+TOOL_ORDER_PROVIDER_MARKER = "tool-order-controlled-v1"
 
 ARCHITECTURE_VERSION_BY_VARIANT: dict[ArchitectureVariant, str] = {
     ArchitectureVariant.EXPLICIT_PLANNER: "phase5-safe-operational-agent-v1",
@@ -98,8 +99,6 @@ class HttpRuntimeHealthProbe:
 
 def _validate_supported_configuration(configuration: ResearchConfiguration) -> None:
     unsupported: list[str] = []
-    if configuration.tool_order != ToolOrderVariant.FREE:
-        unsupported.append(f"tool_order={configuration.tool_order.value}")
     if configuration.evidence_mode != EvidenceMode.PASSIVE_ONLY:
         unsupported.append(f"evidence_mode={configuration.evidence_mode.value}")
     if configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD:
@@ -181,10 +180,8 @@ class LiveTrialExecutor:
             )
         return scenario
 
-    async def _runtime_health(
-        self,
-        configuration: ResearchConfiguration,
-    ) -> dict[str, object]:
+    async def _runtime_health(self, identity: TrialIdentity) -> dict[str, object]:
+        configuration = identity.configuration
         health = await self.health_probe.read()
         expected_architecture = ARCHITECTURE_VERSION_BY_VARIANT[configuration.architecture]
         observed_architecture = health.get("architecture")
@@ -205,14 +202,33 @@ class LiveTrialExecutor:
         provider = health.get("provider")
         if not isinstance(provider, str):
             raise TreatmentIsolationError("agent health did not expose a provider identity")
-        has_marker = TEMPORAL_PROVIDER_MARKER in provider
-        expects_marker = (
+        has_temporal_marker = TEMPORAL_PROVIDER_MARKER in provider
+        expects_temporal_marker = (
             configuration.temporal_reasoning
             == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT
         )
-        if has_marker != expects_marker:
+        if has_temporal_marker != expects_temporal_marker:
             raise TreatmentIsolationError(
                 "temporal provider marker does not match the declared treatment"
+            )
+
+        expects_controlled_order = identity.experiment == ExperimentKind.TOOL_ORDER
+        observed_controlled_order = health.get("tool_order_controlled")
+        if observed_controlled_order is not expects_controlled_order:
+            raise TreatmentIsolationError(
+                "controlled tool-order runtime does not match the experiment: "
+                f"{observed_controlled_order!r} != {expects_controlled_order!r}"
+            )
+        observed_tool_order = health.get("tool_order")
+        if observed_tool_order != configuration.tool_order.value:
+            raise TreatmentIsolationError(
+                "active tool order does not match the research cell: "
+                f"{observed_tool_order!r} != {configuration.tool_order.value!r}"
+            )
+        has_order_marker = TOOL_ORDER_PROVIDER_MARKER in provider
+        if has_order_marker != expects_controlled_order:
+            raise TreatmentIsolationError(
+                "tool-order provider marker does not match the experiment"
             )
         return health
 
@@ -320,7 +336,7 @@ class LiveTrialExecutor:
             raise TreatmentIsolationError("trial identity and experiment cell configuration differ")
         _validate_supported_configuration(identity.configuration)
         benchmark_scenario = self._scenario(scenario)
-        health = await self._runtime_health(identity.configuration)
+        health = await self._runtime_health(identity)
         architecture_version = ARCHITECTURE_VERSION_BY_VARIANT[
             identity.configuration.architecture
         ]
