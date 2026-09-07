@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     local_model_base_url: str = "http://localhost:11434"
     agent_architecture: Literal["explicit_planner", "reactive_react"] = "explicit_planner"
     temporal_reasoning: Literal["standard", "explicit_cause_effect"] = "standard"
+    tool_order: Literal["free", "deployment_first", "symptom_first", "adaptive"] = "free"
+    tool_order_controlled: bool = False
     max_steps: int = Field(default=20, ge=1, le=200)
     max_tool_calls: int = Field(default=15, ge=1, le=200)
     max_repeated_identical_calls: int = Field(default=2, ge=1, le=20)
