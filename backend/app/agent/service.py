@@ -20,7 +20,7 @@ from app.agent.providers import (
 from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
 from app.agent.temporal import ExplicitTemporalReasoningProvider
-from app.agent.tool_order import ControlledToolOrderProvider, ToolOrderMode
+from app.agent.tool_order import ControlledToolOrderProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
