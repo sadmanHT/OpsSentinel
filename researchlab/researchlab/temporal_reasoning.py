@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 from statistics import fmean
+from typing import Any
 
 from benchmarklab.catalog import scenario_by_id
-from benchmarklab.models import BenchmarkCatalog, BenchmarkRunArtifact, ScenarioSpec
+from benchmarklab.models import BenchmarkCatalog, ScenarioSpec
 from benchmarklab.runner import BenchmarkRunner
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -94,7 +95,7 @@ class TemporalReasoningReport(TemporalReportModel):
 class RuntimeOnsetBenchmarkRunner(BenchmarkRunner):
     """Give both H3 arms the same live public onset without exposing hidden chronology."""
 
-    async def _start_agent(self, scenario: ScenarioSpec) -> dict[str, object]:
+    async def _start_agent(self, scenario: ScenarioSpec) -> dict[str, Any]:
         runtime_scenario = scenario.model_copy(deep=True)
         runtime_scenario.public_incident = runtime_scenario.public_incident.model_copy(
             update={"start_time": datetime.now(UTC)}
