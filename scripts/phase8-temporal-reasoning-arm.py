@@ -9,7 +9,12 @@ import httpx
 from benchmarklab.catalog import load_catalog, scenario_by_id
 from evaluationlab.persistence import SqlEvaluationStore
 from researchlab.live_executor import ARCHITECTURE_VERSION_BY_VARIANT, LiveTrialExecutor
-from researchlab.models import ArchitectureVariant, TemporalReasoningVariant, TrialRecord, TrialStatus
+from researchlab.models import (
+    ArchitectureVariant,
+    TemporalReasoningVariant,
+    TrialRecord,
+    TrialStatus,
+)
 from researchlab.persistence import SqlTrialStore
 from researchlab.runner import ExperimentRunner
 from researchlab.temporal_reasoning import (
@@ -103,7 +108,9 @@ async def main() -> None:
     assert len({record.identity.trial_id for record in records}) == 5
     assert len({record.agent_run_id for record in records}) == 5
 
-    expected_architecture = ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER]
+    expected_architecture = ARCHITECTURE_VERSION_BY_VARIANT[
+        ArchitectureVariant.EXPLICIT_PLANNER
+    ]
     for record in records:
         scenario = scenario_by_id(catalog, record.identity.scenario_id)
         health = record.raw_trajectory["runtime_health"]
@@ -111,7 +118,9 @@ async def main() -> None:
         assert health["temporal_reasoning"] == TEMPORAL_MODE.value
         provider = str(health["provider"])
         has_marker = "temporal-cause-effect-v1" in provider
-        assert has_marker == (TEMPORAL_MODE == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT)
+        assert has_marker == (
+            TEMPORAL_MODE == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT
+        )
         _assert_no_ground_truth_leak(
             record,
             scenario.ground_truth.primary_root_cause_code,
@@ -138,7 +147,9 @@ async def main() -> None:
     )
     agent_runs_after_resume = _agent_run_count(engine)
     assert agent_runs_before_resume == agent_runs_after_resume
-    assert [record.agent_run_id for record in resumed] == [record.agent_run_id for record in records]
+    assert [record.agent_run_id for record in resumed] == [
+        record.agent_run_id for record in records
+    ]
     assert await _active_faults() == []
 
     payload = {
