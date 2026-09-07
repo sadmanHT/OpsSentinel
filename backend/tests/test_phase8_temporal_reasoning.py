@@ -14,7 +14,7 @@ from app.agent.models import (
     ProposedAction,
     ProviderUsage,
 )
-from app.agent.temporal import ExplicitTemporalReasoningProvider, TEMPORAL_PROVIDER_MARKER
+from app.agent.temporal import TEMPORAL_PROVIDER_MARKER, ExplicitTemporalReasoningProvider
 from app.models.domain import (
     Diagnosis,
     Evidence,
