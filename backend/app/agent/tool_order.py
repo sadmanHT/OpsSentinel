@@ -15,6 +15,14 @@ from app.models.domain import Diagnosis, Hypothesis
 
 ToolOrderMode = Literal["free", "deployment_first", "symptom_first", "adaptive"]
 TOOL_ORDER_PROVIDER_MARKER = "tool-order-controlled-v1"
+NEGATED_CHANGE_PHRASES = (
+    "no reported recent change",
+    "no recent change",
+    "without a recent change",
+    "no deployment",
+    "no release",
+    "no rollout",
+)
 
 
 def _category(step: PlanStep) -> int:
@@ -68,6 +76,8 @@ def _common_step_set(plan: InvestigationPlan, service: str) -> list[PlanStep]:
 
 def _adaptive_mode(state: AgentState) -> ToolOrderMode:
     text = f"{state.incident.title} {state.incident.description}".casefold()
+    if any(phrase in text for phrase in NEGATED_CHANGE_PHRASES):
+        return "symptom_first"
     if any(word in text for word in ("deploy", "release", "rollout", "change")):
         return "deployment_first"
     return "symptom_first"
