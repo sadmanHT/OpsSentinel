@@ -150,7 +150,9 @@ def tool_order_scenarios(catalog: BenchmarkCatalog) -> list[ScenarioRef]:
     if any(scenario.split.value != ExperimentSplit.VALIDATION.value for scenario in scenarios):
         raise ValueError("Tool Order cohort must contain only validation scenarios")
     adversarial = [
-        scenario for scenario in scenarios if scenario.difficulty.value == Difficulty.ADVERSARIAL.value
+        scenario
+        for scenario in scenarios
+        if scenario.difficulty.value == Difficulty.ADVERSARIAL.value
     ]
     if len(adversarial) != 6:
         raise ValueError("Tool Order cohort must retain exactly six adversarial scenarios")
