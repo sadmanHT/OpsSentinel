@@ -20,6 +20,8 @@ def agent_health() -> dict[str, object]:
         "architecture": service.runtime.architecture_version,
         "provider": service.provider.name,
         "temporal_reasoning": service.settings.temporal_reasoning,
+        "tool_order": service.settings.tool_order,
+        "tool_order_controlled": service.settings.tool_order_controlled,
         "legal_tool_count": len(service.runtime.registry.definitions()),
     }
 
