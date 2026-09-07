@@ -20,6 +20,7 @@ from app.agent.providers import (
 from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
 from app.agent.temporal import ExplicitTemporalReasoningProvider
+from app.agent.tool_order import ControlledToolOrderProvider, ToolOrderMode
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
@@ -36,11 +37,16 @@ class AgentService:
         provider: ReasoningProvider,
     ) -> None:
         self.settings = settings
-        temporal_provider: ReasoningProvider = provider
+        controlled_provider: ReasoningProvider = provider
+        if settings.tool_order_controlled:
+            controlled_provider = ControlledToolOrderProvider(
+                controlled_provider,
+                mode=settings.tool_order,
+            )
         if settings.temporal_reasoning == "explicit_cause_effect":
-            temporal_provider = ExplicitTemporalReasoningProvider(provider)
+            controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
         self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
-            temporal_provider,
+            controlled_provider,
             max_non_progress_steps=settings.max_non_progress_steps,
         )
         resilient_registry = RetryingToolRegistry(
