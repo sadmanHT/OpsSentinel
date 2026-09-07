@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 from app.agent.models import (
     AgentState,
@@ -85,18 +85,18 @@ def _ordered_steps(
         return [step for _, step in indexed]
     if effective == "deployment_first":
         priority = {
-            0: 0,  # deployment
-            1: 1,  # metrics
-            2: 2,  # logs
-            3: 3,  # code/docs
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
             4: 4,
         }
     else:
         priority = {
-            1: 0,  # metrics
-            2: 1,  # logs
-            0: 2,  # deployment
-            3: 3,  # code/docs
+            1: 0,
+            2: 1,
+            0: 2,
+            3: 3,
             4: 4,
         }
     return [
