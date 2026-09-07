@@ -29,22 +29,34 @@ from researchlab.models import (
     ExperimentPlan,
     ExperimentSplit,
     ResearchConfiguration,
+    TemporalReasoningVariant,
     TrialIdentity,
     make_trial_identity,
 )
 
 
 class FakeHealthProbe:
-    def __init__(self, architecture: str) -> None:
+    def __init__(
+        self,
+        architecture: str,
+        *,
+        temporal_reasoning: TemporalReasoningVariant = TemporalReasoningVariant.STANDARD,
+    ) -> None:
         self.architecture = architecture
+        self.temporal_reasoning = temporal_reasoning
         self.calls = 0
 
     async def read(self) -> dict[str, object]:
         self.calls += 1
+        explicit = self.temporal_reasoning == TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT
+        provider = "deterministic"
+        if explicit:
+            provider += "+temporal-cause-effect-v1"
         return {
             "status": "ok",
             "architecture": self.architecture,
-            "provider": "deterministic",
+            "provider": provider,
+            "temporal_reasoning": self.temporal_reasoning.value,
             "legal_tool_count": 16,
         }
 
@@ -223,6 +235,7 @@ async def test_live_executor_applies_budget_scores_and_persists_trace() -> None:
     assert outcome.raw_trajectory["runtime_health"]["architecture"] == (
         ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER]
     )
+    assert outcome.raw_trajectory["runtime_health"]["temporal_reasoning"] == "standard"
     assert store.load_run(identity.trial_id) is not None
     assert store.load_result(identity.trial_id, scenario.scenario_id) is not None
 
@@ -277,6 +290,60 @@ async def test_live_executor_rejects_architecture_mismatch_before_launch() -> No
         await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
 
     assert benchmark.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_live_executor_rejects_temporal_mismatch_before_launch() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    configuration = ResearchConfiguration(
+        tool_budget=5,
+        temporal_reasoning=TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT,
+    )
+    identity, cell = _trial(scenario, configuration)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            temporal_reasoning=TemporalReasoningVariant.STANDARD,
+        ),
+    )
+
+    with pytest.raises(TreatmentIsolationError, match="active temporal reasoning"):
+        await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert benchmark.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_live_executor_accepts_explicit_temporal_treatment() -> None:
+    catalog = load_catalog()
+    scenario = _easy_dev_scenario()
+    configuration = ResearchConfiguration(
+        tool_budget=5,
+        temporal_reasoning=TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT,
+    )
+    identity, cell = _trial(scenario, configuration)
+    benchmark = FakeBenchmarkRunner(scenario.ground_truth.primary_root_cause_code)
+    executor = LiveTrialExecutor(
+        catalog=catalog,
+        benchmark_runner=benchmark,  # type: ignore[arg-type]
+        evaluation_store=FakeEvaluationStore(),
+        health_probe=FakeHealthProbe(
+            ARCHITECTURE_VERSION_BY_VARIANT[ArchitectureVariant.EXPLICIT_PLANNER],
+            temporal_reasoning=TemporalReasoningVariant.EXPLICIT_CAUSE_EFFECT,
+        ),
+    )
+
+    outcome = await executor.execute(identity, scenario_ref_from_benchmark(scenario), cell)
+
+    assert outcome.raw_trajectory["runtime_health"]["temporal_reasoning"] == (
+        "explicit_cause_effect"
+    )
+    assert benchmark.calls == 1
 
 
 @pytest.mark.asyncio
