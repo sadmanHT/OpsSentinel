@@ -56,6 +56,7 @@ services:
       OPSSENTINEL_LLM_PROVIDER: local
       OPSSENTINEL_LLM_MODEL: local-placeholder
       OPSSENTINEL_AGENT_ARCHITECTURE: ${OPSSENTINEL_AGENT_ARCHITECTURE:-explicit_planner}
+      OPSSENTINEL_TEMPORAL_REASONING: ${OPSSENTINEL_TEMPORAL_REASONING:-standard}
       OPSSENTINEL_MCP_DATABASE_URL: postgresql://opssentinel_reader:opssentinel_readonly@postgres:5432/opssentinel
       OPSSENTINEL_MCP_REPO_ROOT: /workspace
       OPSSENTINEL_MCP_DOCS_ROOT: /workspace/docs
@@ -147,6 +148,10 @@ services:
       checkout:
         condition: service_healthy
       payment:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+      worker:
         condition: service_healthy
     ports:
       - "8080:8080"
