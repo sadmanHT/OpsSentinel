@@ -19,6 +19,7 @@ from app.agent.providers import (
 )
 from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
+from app.agent.temporal import ExplicitTemporalReasoningProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
@@ -35,8 +36,11 @@ class AgentService:
         provider: ReasoningProvider,
     ) -> None:
         self.settings = settings
+        temporal_provider: ReasoningProvider = provider
+        if settings.temporal_reasoning == "explicit_cause_effect":
+            temporal_provider = ExplicitTemporalReasoningProvider(provider)
         self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
-            provider,
+            temporal_provider,
             max_non_progress_steps=settings.max_non_progress_steps,
         )
         resilient_registry = RetryingToolRegistry(
