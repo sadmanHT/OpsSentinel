@@ -23,6 +23,8 @@ def agent_health() -> dict[str, object]:
         "tool_order": service.settings.tool_order,
         "tool_order_controlled": service.settings.tool_order_controlled,
         "evidence_mode": service.settings.evidence_mode,
+        "retrieval_depth": service.settings.retrieval_depth,
+        "retrieval_depth_controlled": service.settings.retrieval_depth_controlled,
         "stopping_strategy": service.settings.stopping_strategy,
         "compound_evidence_plan": service.settings.compound_evidence_plan,
         "legal_tool_count": len(service.runtime.registry.definitions()),
