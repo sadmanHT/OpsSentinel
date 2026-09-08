@@ -2,9 +2,9 @@
 
 ## Status
 
-**Implementation and research campaign are code-complete; merge closure is still pending.** On branch `phase-8-controlled-research`, code head `f72e47c297e57fc9135c8252af9001fd94f469b4` passed every Phase 8 experiment workflow plus the Phase 6, Phase 7, ResearchLab, and cumulative CI regressions on that exact SHA. PR #10 remains the Phase 8 integration vehicle.
+**FULLY CLOSED on `main`.** PR #10 merged with an expected-head guard from the exact documentation-inclusive head `3052f98cc55ecc640fbd03e582a48ad265eb70b4` into merge commit `e893ca7a58f0af3eb71825488ac7fb2d0c9a8232`. Push-triggered cumulative CI **#250**, run `34199161002`, then passed on that exact merge commit, including backend unit/integration/migration checks plus the full clean-state Compose integration and restart-cleanup gate.
 
-This handoff update is intentionally not a post-merge completion claim. The documentation-inclusive branch head created by closure synchronization must itself remain green, PR #10 must merge with an expected-head guard, and the resulting `main` commit must pass the cumulative Phase 1–8 validation before Phase 8 is fully closed.
+This final status synchronization changes documentation only. Per project policy, Phase 9 must not begin until CI on the final status-only `main` head also remains green; no Phase 8 implementation or research result is being changed by this synchronization.
 
 ## What Phase 8 adds
 
@@ -51,7 +51,7 @@ Twenty real trials covered two scenarios in each difficulty tier for each archit
 
 **Interpretation:** null architecture effect on diagnosis in this controlled local baseline. Explicit planning did not solve the compound-secondary-cause weakness and generally added latency rather than diagnostic benefit.
 
-Authoritative current-head artifact: `phase8-h1-planning-difficulty-report`, GitHub artifact digest `sha256:3a7f9f37737191a30e0c72eb1b07c6ccdebf1ffcefd6f5f0bc28538052802453`.
+Authoritative artifact: `phase8-h1-planning-difficulty-report`, GitHub artifact digest `sha256:3a7f9f37737191a30e0c72eb1b07c6ccdebf1ffcefd6f5f0bc28538052802453`.
 
 ### 2. H2 — Investigation budget: 5 vs 10 vs 15 vs 20 calls
 
@@ -70,7 +70,7 @@ Only budget utilization changed mechanically: approximately 0.48, 0.24, 0.16, an
 
 **Interpretation:** null budget effect across this range because the agent usually stopped well before even the smallest budget. Increasing the ceiling alone did not cause deeper investigation or improve diagnosis.
 
-Authoritative current-head artifact: `phase8-h2-investigation-budget`, GitHub artifact digest `sha256:76a5878d1710feeba5d40e796730743ef7bac589359cb963881e3a9d15bc0b13`.
+Authoritative artifact: `phase8-h2-investigation-budget`, GitHub artifact digest `sha256:76a5878d1710feeba5d40e796730743ef7bac589359cb963881e3a9d15bc0b13`.
 
 ### 3. H3 — Temporal reasoning: standard vs explicit cause→effect
 
@@ -88,7 +88,7 @@ The treatment mechanism did change: explicit cause→effect produced a mean **0.
 
 **Interpretation:** valid null diagnostic effect. Explicit temporal representation changed the intended reasoning metadata without changing RCA on this cohort.
 
-Authoritative current-head artifact: `phase8-h3-temporal-reasoning-report`, GitHub artifact digest `sha256:1b693518fe8ce6822660e6c5762a05fd13b87e847afd33e42aa9a9c3bae2279f`.
+Authoritative artifact: `phase8-h3-temporal-reasoning-report`, GitHub artifact digest `sha256:1b693518fe8ce6822660e6c5762a05fd13b87e847afd33e42aa9a9c3bae2279f`.
 
 ### 4. Controlled tool order: free vs deployment-first vs symptom-first vs adaptive
 
@@ -106,7 +106,7 @@ The order treatment itself was real and visible in trajectories. Deployment-firs
 
 **Interpretation:** null diagnostic order effect with measurable deployment-first investigation overhead.
 
-Authoritative current-head artifact: `phase8-tool-order-report`, GitHub artifact digest `sha256:b8a71006ec82204aadc16ce94e01ccbf81a29707aac1846d062f8e2e2705725a`.
+Authoritative artifact: `phase8-tool-order-report`, GitHub artifact digest `sha256:b8a71006ec82204aadc16ce94e01ccbf81a29707aac1846d062f8e2e2705725a`.
 
 ### 5. H4 — Passive evidence vs active verification
 
@@ -126,7 +126,7 @@ Verification executed exactly one deterministic verification probe per trial, in
 
 **Interpretation:** valid null diagnostic/calibration effect with clear verification cost in this baseline.
 
-Authoritative current-head artifact: `phase8-passive-verification-report`, GitHub artifact digest `sha256:a78ff7577c15d1f83990fcf28d9cae0a97ab10ba56d7b2c85c64b219a540bd72`.
+Authoritative artifact: `phase8-passive-verification-report`, GitHub artifact digest `sha256:a78ff7577c15d1f83990fcf28d9cae0a97ab10ba56d7b2c85c64b219a540bd72`.
 
 ### 6. H5 — Compound stopping: confidence threshold vs unresolved evidence
 
@@ -162,7 +162,7 @@ The unresolved-evidence mechanism therefore worked exactly as intended operation
 
 **Interpretation:** negative treatment effect. Forcing unresolved-evidence completion increased work and evidence collection but did not improve compound completeness and reduced primary diagnostic accuracy from 0.75 to 0.50. This result is preserved unchanged.
 
-Authoritative current-head artifact: `phase8-compound-handling-report`, artifact ID `10044523422`, GitHub artifact digest `sha256:cbe11f54db258c48b2627f60c24fd4dfc719fa7d760e540df33ba1764262496b`.
+Authoritative artifact: `phase8-compound-handling-report`, artifact ID `10044523422`, GitHub artifact digest `sha256:cbe11f54db258c48b2627f60c24fd4dfc719fa7d760e540df33ba1764262496b`.
 
 ## Cross-experiment findings
 
@@ -195,7 +195,9 @@ Validation failures were treated as blocking engineering defects without weakeni
 - H5 initially inherited the validation split even though all compound scenarios are hidden-test; the preregistered plan was corrected to `hidden_test` before live interpretation;
 - H5 report run #2 failed after both valid live arms because its reporting environment omitted the EvaluationLab package; only the reporting dependency was repaired, the SHA advanced, and the full exact-head H5 plus cumulative chain was rerun rather than reusing stale successful arms.
 
-## Code-complete exact-head validation
+## Validation and closure evidence
+
+### Code-complete exact-head proof
 
 On code head `f72e47c297e57fc9135c8252af9001fd94f469b4`, every required workflow completed successfully:
 
@@ -208,22 +210,44 @@ On code head `f72e47c297e57fc9135c8252af9001fd94f469b4`, every required workflow
 - Phase 8 Compound Handling **#4**, run `34197407145`: PASS;
 - cumulative CI **#247**, run `34197407161`: PASS.
 
-This exact-head chain includes static/unit/integrity checks, strict typing, real clean-stack treatment arms, artifact reporting, persistence/resume checks, fault restoration, log inspection, Phase 6/7 regressions, and the ordinary cumulative Phase 1–8 CI gate.
+### Documentation-inclusive branch proof
 
-## Required closure sequence
+Closure synchronization produced exact PR head `3052f98cc55ecc640fbd03e582a48ad265eb70b4`. On that exact head, every required workflow again completed successfully:
 
-Phase 8 is ready for the final closure sequence, but no later phase should rely on it until all steps pass:
+- Phase 6 BenchmarkLab **#184**, run `34198538426`: PASS;
+- Phase 7 EvaluationLab **#189**, run `34198538447`: PASS;
+- Phase 8 ResearchLab **#192**, run `34198538506`: PASS;
+- Phase 8 H3 Temporal Reasoning **#111**, run `34198538581`: PASS;
+- Phase 8 Tool Order **#72**, run `34198538534`: PASS;
+- Phase 8 Passive vs Verification **#42**, run `34198538558`: PASS;
+- Phase 8 Compound Handling **#8**, run `34198538470`: PASS;
+- cumulative CI **#249**, run `34198538487`: PASS.
 
-1. this documentation/README closure synchronization is committed to PR #10;
-2. the new documentation-inclusive PR head passes the relevant Phase 6/7/8 workflows and cumulative CI on that exact SHA;
-3. PR #10 is marked ready for review only after that proof;
-4. PR #10 merges using an expected-head guard so GitHub cannot merge a different unvalidated SHA;
-5. the resulting `main` merge commit passes push-triggered cumulative Phase 1–8 validation;
-6. only then is Phase 8 fully closed and available as a prerequisite for the next gated phase.
+PR #10 was then marked ready and merged with `expected_head_sha=3052f98cc55ecc640fbd03e582a48ad265eb70b4`; GitHub produced merge commit `e893ca7a58f0af3eb71825488ac7fb2d0c9a8232`.
 
-## Guarantees available after full closure
+### Post-merge `main` proof
 
-After the post-merge `main` proof passes, later phases may rely on:
+Push-triggered cumulative **CI #250**, run `34199161002`, ran on exact merge SHA `e893ca7a58f0af3eb71825488ac7fb2d0c9a8232` and completed `success`.
+
+Its jobs all passed:
+
+- `benchmarklab`: Ruff, mypy, unit/integrity tests, catalog smoke;
+- `chaoslab`: Ruff, unit tests, import smoke;
+- `frontend`: production build;
+- `backend`: Ruff, mypy, unit tests, startup/import smoke, migration upgrade, integration tests, rollback and re-upgrade;
+- `compose`: Compose validation/build, full clean-state cumulative integration gate, research artifact upload, restart-cleanup regression, and clean teardown.
+
+This sequence proves the merged repository state, not only the feature branch.
+
+## Closure outcome
+
+All Phase 8 implementation, research, exact-head branch, guarded merge, and post-merge validation requirements passed. The null and negative findings remain first-class research outputs and were not tuned away.
+
+The README status synchronization commit `dec62dd1e0ed14badc7ec86d108f71980a670706` changes documentation only. This handoff update is the final status-only synchronization commit; Phase 9 remains gated until cumulative CI triggered by this final `main` head is green.
+
+## Guarantees available to later phases
+
+After the final status-only CI safeguard passes, later phases may rely on:
 
 - controlled, deterministic, resumable research campaigns over real agent trajectories;
 - explicit runtime treatment provenance and fail-closed isolation;
