@@ -145,6 +145,8 @@ def metric_snapshot() -> dict[str, float]:
             'opssentinel_run_latency_observations{stage="verified_resolution"}'
         ),
         "agent_tokens": prometheus_query("opssentinel_agent_token_usage"),
+        "agent_estimated_cost": prometheus_query("opssentinel_agent_estimated_cost"),
+        "model_executions": prometheus_query("sum(opssentinel_model_executions)"),
         "tool_calls": prometheus_query("sum(opssentinel_tool_calls)"),
     }
 
@@ -159,6 +161,20 @@ def restart_observability_stack() -> None:
 def main() -> None:
     seed = json.loads(LATENCY_SEED.read_text())
     run_ids = [seed["passed_run_id"], seed["rejected_run_id"]]
+    expected_tokens = float(
+        seed["passed_cost"]["total_tokens"] + seed["rejected_cost"]["total_tokens"]
+    )
+    expected_cost = float(
+        seed["passed_cost"]["total_estimated_cost"]
+        + seed["rejected_cost"]["total_estimated_cost"]
+    )
+    expected_model_executions = float(
+        seed["passed_cost"]["model_execution_count"]
+        + seed["rejected_cost"]["model_execution_count"]
+    )
+    expected_tool_calls = float(
+        seed["passed_cost"]["tool_call_count"] + seed["rejected_cost"]["tool_call_count"]
+    )
 
     metrics_before = backend_metrics()
     latency_before = latency_summary()
@@ -183,8 +199,14 @@ def main() -> None:
     assert snapshot_before["run_count"] == 2.0, snapshot_before
     assert snapshot_before["diagnosis_observations"] == 2.0, snapshot_before
     assert snapshot_before["verified_resolution_observations"] == 1.0, snapshot_before
-    assert snapshot_before["agent_tokens"] > 0.0, snapshot_before
-    assert snapshot_before["tool_calls"] > 0.0, snapshot_before
+    assert snapshot_before["agent_tokens"] == expected_tokens, (snapshot_before, seed)
+    assert snapshot_before["agent_estimated_cost"] == expected_cost, (snapshot_before, seed)
+    assert snapshot_before["model_executions"] == expected_model_executions, (
+        snapshot_before,
+        seed,
+    )
+    assert snapshot_before["model_executions"] > 0.0, snapshot_before
+    assert snapshot_before["tool_calls"] == expected_tool_calls, (snapshot_before, seed)
 
     restart_observability_stack()
 
@@ -206,10 +228,13 @@ def main() -> None:
             snapshot_before["verified_resolution_observations"]
         ),
         "agent_tokens": int(snapshot_before["agent_tokens"]),
+        "agent_estimated_cost": snapshot_before["agent_estimated_cost"],
+        "model_executions": int(snapshot_before["model_executions"]),
         "tool_calls": int(snapshot_before["tool_calls"]),
         "grafana_dashboard_uid": "opssentinel-operational",
         "prometheus_target_health": "up",
         "restart_persistence_verified": True,
+        "usage_truth_cross_checked": True,
         "privacy_checks": {
             "run_ids_absent": True,
             "scenario_ids_absent": True,
