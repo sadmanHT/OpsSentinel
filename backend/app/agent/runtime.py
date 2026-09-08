@@ -30,6 +30,7 @@ from app.models.domain import (
     VerificationStatus,
     utc_now,
 )
+from app.observability.tracing import agent_tracer
 
 
 class GraphPayload(TypedDict):
@@ -60,9 +61,22 @@ class AgentRuntime:
         builder = StateGraph(GraphPayload)
 
         def add_node(node: AgentNode, action: GraphNode) -> None:
+            async def traced_action(payload: GraphPayload) -> GraphPayload:
+                state = payload["state"]
+                with agent_tracer().start_as_current_span(
+                    f"agent.node.{node.value}",
+                    attributes={
+                        "opssentinel.agent.node": node.value,
+                        "opssentinel.agent.run_id": str(state.run_id),
+                        "opssentinel.agent.architecture": self.architecture_version,
+                        "opssentinel.agent.service": state.incident.service,
+                    },
+                ):
+                    return await action(payload)
+
             # LangGraph's overloads do not currently accept async bound methods cleanly
             # under strict mypy, so contain the third-party typing gap at this boundary.
-            builder.add_node(node.value, cast(Any, action))
+            builder.add_node(node.value, cast(Any, traced_action))
 
         add_node(AgentNode.TRIAGE, self._triage)
         add_node(AgentNode.PLAN, self._plan)
@@ -150,16 +164,24 @@ class AgentRuntime:
         return await self._invoke(state)
 
     async def _invoke(self, state: AgentState) -> AgentState:
-        result = await self.graph.ainvoke({"state": state})
-        final = result["state"]
-        if not isinstance(final, AgentState):
-            final = AgentState.model_validate(final)
-        if self.interrupt_after and final.next_node != AgentNode.END:
-            final.status = AgentRunStatus.PAUSED
-            final.stop_reason = f"paused after {self.interrupt_after[-1].value}"
-            final.updated_at = utc_now()
-            self.store.save(final)
-        return final
+        with agent_tracer().start_as_current_span(
+            "agent.investigation",
+            attributes={
+                "opssentinel.agent.run_id": str(state.run_id),
+                "opssentinel.agent.architecture": self.architecture_version,
+                "opssentinel.agent.service": state.incident.service,
+            },
+        ):
+            result = await self.graph.ainvoke({"state": state})
+            final = result["state"]
+            if not isinstance(final, AgentState):
+                final = AgentState.model_validate(final)
+            if self.interrupt_after and final.next_node != AgentNode.END:
+                final.status = AgentRunStatus.PAUSED
+                final.stop_reason = f"paused after {self.interrupt_after[-1].value}"
+                final.updated_at = utc_now()
+                self.store.save(final)
+            return final
 
     def _entry_router(self, payload: GraphPayload) -> str:
         return payload["state"].next_node.value

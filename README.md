@@ -11,7 +11,7 @@ The project is implemented in ten gated phases. A phase is complete only after i
 1. **ChaosLab** — reproducible production-incident simulator and modular fault injection.
 2. **OpsSentinel Agent Runtime** — LangGraph-based autonomous investigator using constrained tools through MCP.
 3. **Benchmark & Evaluation Laboratory** — realistic, difficult, adversarial, compound, temporal, and counterfactual evaluation.
-4. **Research & Observability Layer** — accuracy, calibration, efficiency, cost, safety, causal reasoning, traces, and failure analysis.
+4. **Research & Observability Layer** — accuracy, calibration, efficiency, cost, safety, causal reasoning, traces, dashboards, and failure analysis.
 
 ## Current implementation status
 
@@ -22,8 +22,9 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
 - ✅ **Phase 6 — BenchmarkLab:** fully closed; PR #8 merged and the complete post-merge Phase 1–6 cumulative gate passed on `main`. See `docs/phase-6-handoff.md`.
 - ✅ **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** fully closed after guarded PR #9 merge and post-merge cumulative validation. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
-- ✅ **Phase 8 — Controlled Research Experiments and Architecture Comparisons:** fully closed after guarded PR #10 merge at `e893ca7a58f0af3eb71825488ac7fb2d0c9a8232` and successful post-merge cumulative CI #250. All six controlled campaigns retain their measured null/negative findings. See `docs/phase-8-handoff.md`.
-- Phases 9–10 remain gated behind their own cumulative completion gates.
+- ✅ **Phase 8 — Controlled Research Experiments and Architecture Comparisons:** fully closed after guarded PR #10 merge and successful post-merge cumulative validation. Null and negative findings remain first-class results. See `docs/phase-8-handoff.md`.
+- 🟢 **Phase 9 — Cost/Accuracy Optimization, Observability, and Human-AI System:** implementation and pre-merge exact-head acceptance are complete on `phase-9-cost-observability-ui`. Full closure still requires guarded PR #11 merge and post-merge `main` validation. See `docs/phase-9-handoff.md`.
+- Phase 10 remains gated until Phase 9 is merged and its post-merge cumulative proof is green.
 
 ## Stack in use
 
@@ -31,8 +32,10 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - PostgreSQL + pgvector, Redis
 - Docker Compose
 - React + TypeScript + Vite
-- pytest, pytest-asyncio, ruff, mypy, GitHub Actions
-- Prometheus-compatible ChaosLab service metrics
+- OpenTelemetry
+- Prometheus + Grafana
+- self-hosted Langfuse v4
+- pytest, pytest-asyncio, Ruff, mypy, Playwright, GitHub Actions
 
 ## Quick start
 
@@ -55,6 +58,9 @@ Useful endpoints after startup:
 - OpsSentinel backend: `http://localhost:8000/health`
 - MCP safety boundary: `http://localhost:8000/mcp/health`
 - MCP tool registry: `http://localhost:8000/mcp/tools`
+- Incident Console: `http://localhost:5173/`
+- run cost/latency summary: `http://localhost:8000/observability/runs/{run_id}/cost`
+- persisted experiment dashboard API: `http://localhost:8000/observability/experiments`
 - simulated gateway: `http://localhost:8080/health`
 - ChaosLab controller: `http://localhost:8100/health` (test harness only; never exposed to agents)
 - checkout telemetry: `http://localhost:8101/telemetry`
@@ -62,10 +68,12 @@ Useful endpoints after startup:
 - payment telemetry: `http://localhost:8103/telemetry`
 - worker telemetry: `http://localhost:8104/telemetry`
 
-Phase-specific operational smoke flows are exercised by the cumulative CI/Compose gate. Phase 5 includes approval/rejection, persisted resume, verification, transient-tool recovery, all-major-MCP-tool failure coverage, and zero executed R3 operations. Phase 6 adds a deterministic 50-scenario BenchmarkLab catalog, structural holdouts, temporal/adversarial/counterfactual/compound cases, leakage and reproducibility checks, independent scenario launch/cleanup, and a live benchmark-to-agent E2E. Phase 7 adds deterministic RCA/compound/evidence/efficiency/safety scoring, confidence calibration with Brier/ECE/reliability diagrams, persisted evaluation/failure/experiment records, five-tier live measurement, and a four-variant live counterfactual causal-consistency experiment. Phase 8 adds ResearchLab-controlled real-agent experiments for architecture, investigation budget, tool order, active verification, temporal reasoning, and compound stopping; treatment isolation is fail-closed, raw trajectories are retained, and performance remains descriptive rather than a CI target. All accumulated phases are exercised together in the cumulative clean-state gate.
+Phase-specific operational smoke flows are exercised by cumulative CI and dedicated exact-head workflows. Phase 5 covers approval/rejection, persisted resume, verification, transient-tool recovery, major MCP failure paths, and zero executed R3 operations. Phase 6 adds the deterministic 50-scenario BenchmarkLab catalog and live benchmark-to-agent E2E. Phase 7 adds deterministic evaluation, calibration, persisted evaluator/experiment records, and live counterfactual causal-consistency checks. Phase 8 adds controlled real-agent experiments for architecture, investigation budget, tool order, active verification, temporal reasoning, and compound stopping while preserving null/negative findings.
+
+Phase 9 adds durable model/tool/token/cost/latency accounting; an 80-trial sampled cost/accuracy Pareto analysis; live latency timing including verified-resolution semantics; browser-to-simulator OpenTelemetry; Prometheus/Grafana operational and research monitoring; a self-hosted Langfuse stack with safe agent/tool/generation traces and post-hoc evaluator scores; the React Incident Console with explicit human approval boundaries; a persisted EvaluationLab-backed experiment dashboard; and clean-state Playwright runs for easy, hard, adversarial, and compound BenchmarkLab incidents. Missing measurements remain missing, legitimate zero token/$0 local-provider measurements remain zero, and benchmark truth remains outside the agent/browser runtime.
 
 ## Research integrity
 
-Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, scoring rules, or benchmark ground truth must never be modified merely to force a preferred research result. Negative, null, or surprising findings are valid when the experiment is correct.
+Hypotheses are recorded before experiments. The software must be repaired until required validation passes, but experimental code, labels, tests, scoring rules, benchmark ground truth, or reported observations must never be modified merely to force a preferred research result. Negative, null, or surprising findings are valid when the experiment is correct.
 
-See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, `docs/phase-5-handoff.md`, `docs/phase-6-handoff.md`, `docs/evaluationlab.md`, `docs/phase-7-handoff.md`, and `docs/phase-8-handoff.md`.
+See `docs/architecture.md`, `docs/research-hypotheses.md`, `docs/phase-1-handoff.md`, `docs/chaoslab.md`, `docs/phase-2-handoff.md`, `docs/mcp-safety.md`, `docs/phase-3-handoff.md`, `docs/phase-4-handoff.md`, `docs/phase-5-handoff.md`, `docs/phase-6-handoff.md`, `docs/evaluationlab.md`, `docs/phase-7-handoff.md`, `docs/phase-8-handoff.md`, and `docs/phase-9-handoff.md`.

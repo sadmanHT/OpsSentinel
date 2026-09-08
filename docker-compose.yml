@@ -7,6 +7,8 @@ x-chaoslab-service: &chaoslab-service
     CHAOSLAB_REDIS_URL: redis://redis:6379/1
     CHAOSLAB_DATABASE_URL: postgresql://opssentinel:opssentinel@postgres:5432/opssentinel
     CHAOSLAB_SEED: 42
+    CHAOSLAB_OTEL_ENABLED: ${CHAOSLAB_OTEL_ENABLED:-false}
+    CHAOSLAB_OTEL_EXPORTER_OTLP_ENDPOINT: ${CHAOSLAB_OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
   depends_on:
     postgres:
       condition: service_healthy
@@ -46,6 +48,46 @@ services:
       timeout: 3s
       retries: 12
 
+  otel-collector:
+    image: otel/opentelemetry-collector:0.160.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./observability/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: opssentinel
+      GF_SECURITY_ADMIN_PASSWORD: opssentinel
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+
   backend:
     build:
       context: ./backend
@@ -60,8 +102,13 @@ services:
       OPSSENTINEL_TOOL_ORDER: ${OPSSENTINEL_TOOL_ORDER:-free}
       OPSSENTINEL_TOOL_ORDER_CONTROLLED: ${OPSSENTINEL_TOOL_ORDER_CONTROLLED:-false}
       OPSSENTINEL_EVIDENCE_MODE: ${OPSSENTINEL_EVIDENCE_MODE:-passive_only}
+      OPSSENTINEL_RETRIEVAL_DEPTH: ${OPSSENTINEL_RETRIEVAL_DEPTH:-20}
+      OPSSENTINEL_RETRIEVAL_DEPTH_CONTROLLED: ${OPSSENTINEL_RETRIEVAL_DEPTH_CONTROLLED:-false}
       OPSSENTINEL_STOPPING_STRATEGY: ${OPSSENTINEL_STOPPING_STRATEGY:-confidence_threshold}
       OPSSENTINEL_COMPOUND_EVIDENCE_PLAN: ${OPSSENTINEL_COMPOUND_EVIDENCE_PLAN:-false}
+      OPSSENTINEL_OTEL_ENABLED: ${OPSSENTINEL_OTEL_ENABLED:-false}
+      OPSSENTINEL_OTEL_SERVICE_NAME: ${OPSSENTINEL_OTEL_SERVICE_NAME:-opssentinel-backend}
+      OPSSENTINEL_OTEL_EXPORTER_OTLP_ENDPOINT: ${OPSSENTINEL_OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
       OPSSENTINEL_MCP_DATABASE_URL: postgresql://opssentinel_reader:opssentinel_readonly@postgres:5432/opssentinel
       OPSSENTINEL_MCP_REPO_ROOT: /workspace
       OPSSENTINEL_MCP_DOCS_ROOT: /workspace/docs

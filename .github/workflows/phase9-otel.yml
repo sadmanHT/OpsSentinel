@@ -1,0 +1,204 @@
+name: Phase 9 OpenTelemetry
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "backend/app/observability/tracing.py"
+      - "backend/app/agent/**"
+      - "backend/app/mcp/**"
+      - "backend/tests/test_phase9_tracing.py"
+      - "chaoslab/chaoslab/tracing.py"
+      - "chaoslab/tests/test_phase9_tracing.py"
+      - "frontend/package.json"
+      - "frontend/src/**"
+      - "frontend/scripts/phase9-otel-proof.mjs"
+      - "frontend/vite.config.ts"
+      - "observability/otel-collector-config.yml"
+      - "scripts/phase9-otel-verify.py"
+      - "docker-compose.yml"
+      - ".github/workflows/phase9-otel.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python tracing runtimes
+        run: |
+          python -m pip install -e 'backend[dev]'
+          python -m pip install -e 'chaoslab[dev]'
+
+      - name: Install frontend tracing runtime
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Ruff Phase 9 tracing implementation
+        run: |
+          ruff check \
+            backend/app/observability/tracing.py \
+            backend/tests/test_phase9_tracing.py \
+            chaoslab/chaoslab/tracing.py \
+            chaoslab/tests/test_phase9_tracing.py \
+            scripts/phase9-otel-verify.py
+
+      - name: Strict backend typing
+        working-directory: backend
+        run: mypy app
+
+      - name: Phase 9 tracing unit tests
+        run: |
+          pytest backend/tests/test_phase9_tracing.py
+          pytest chaoslab/tests/test_phase9_tracing.py
+
+      - name: Frontend production build and proof-script syntax
+        working-directory: frontend
+        run: |
+          npm run build
+          node --check scripts/phase9-otel-proof.mjs
+
+      - name: Validate Compose observability profile
+        run: docker compose --profile observability config >/dev/null
+
+  live-distributed-trace:
+    needs: integrity
+    runs-on: ubuntu-latest
+    env:
+      OPSSENTINEL_OTEL_ENABLED: "true"
+      OPSSENTINEL_OTEL_SERVICE_NAME: opssentinel-backend
+      OPSSENTINEL_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      CHAOSLAB_OTEL_ENABLED: "true"
+      CHAOSLAB_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install browser proof runtime
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Start clean traced stack
+        run: |
+          set -euo pipefail
+          docker compose --profile observability down -v --remove-orphans || true
+          docker compose --profile observability up -d --build \
+            postgres redis otel-collector backend frontend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:5173/ >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose --profile observability ps
+            docker compose --profile observability logs backend frontend chaoslab-controller \
+              checkout inventory payment worker gateway --no-color
+            exit 1
+          fi
+
+      - name: Run browser trace proof
+        working-directory: frontend
+        env:
+          OPSSENTINEL_OTEL_BROWSER_ARTIFACT: ../phase9-otel-browser.json
+          OPSSENTINEL_OTEL_BROWSER_URL: http://127.0.0.1:5173/?otel=1
+        run: node scripts/phase9-otel-proof.mjs
+
+      - name: Verify end-to-end trace and no-leak controls
+        run: |
+          set -euo pipefail
+          verified=0
+          for attempt in $(seq 1 30); do
+            docker compose --profile observability logs otel-collector --no-color \
+              > /tmp/opssentinel-phase9-otel-collector.log
+            if python scripts/phase9-otel-verify.py \
+              --browser phase9-otel-browser.json \
+              --collector-log /tmp/opssentinel-phase9-otel-collector.log \
+              --output phase9-otel-proof.json; then
+              verified=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$verified" -ne 1 ]; then
+            echo "Distributed trace verification did not converge"
+            cat phase9-otel-proof.json || true
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.request import urlopen
+
+          browser = json.loads(Path("phase9-otel-browser.json").read_text())
+          proof = json.loads(Path("phase9-otel-proof.json").read_text())
+          assert proof["passed"] is True, proof
+          assert proof["trace_id"] == browser["trace_id"]
+          assert proof["run_id"] == browser["run_id"]
+          with urlopen(f"http://127.0.0.1:8000/agent/runs/{browser['run_id']}", timeout=5) as response:
+              persisted = json.load(response)
+          assert persisted["status"] == "paused", persisted
+          PY
+
+      - name: Retain safe distributed-trace proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-otel-distributed-trace
+          path: phase9-otel-proof.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify clean operational state and critical logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose --profile observability logs backend --no-color \
+            > /tmp/opssentinel-phase9-otel-backend.log
+          docker compose --profile observability logs chaoslab-controller checkout inventory \
+            payment worker gateway --no-color \
+            > /tmp/opssentinel-phase9-otel-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase9-otel-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase9-otel-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose --profile observability down -v --remove-orphans || true

@@ -1,0 +1,174 @@
+name: Phase 9 Langfuse
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "backend/app/config.py"
+      - "backend/app/observability/**"
+      - "backend/tests/test_phase9_langfuse.py"
+      - "benchmarklab/**"
+      - "evaluationlab/**"
+      - "scripts/phase9-langfuse-smoke.py"
+      - "docker-compose.yml"
+      - "docker-compose.langfuse.yml"
+      - ".github/workflows/phase9-langfuse.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase 9 Langfuse engineering runtime
+        run: |
+          python -m pip install -e 'backend[dev]'
+          python -m pip install -e benchmarklab -e evaluationlab
+
+      - name: Ruff Langfuse implementation
+        run: |
+          ruff check \
+            backend/app/config.py \
+            backend/app/observability/tracing.py \
+            backend/app/observability/provider.py \
+            backend/tests/test_phase9_langfuse.py \
+            scripts/phase9-langfuse-smoke.py
+
+      - name: Strict backend typing
+        working-directory: backend
+        run: mypy app
+
+      - name: Phase 9 Langfuse unit tests
+        run: |
+          pytest \
+            backend/tests/test_phase9_tracing.py \
+            backend/tests/test_phase9_langfuse.py
+
+      - name: Validate Langfuse Compose overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.langfuse.yml config >/dev/null
+
+  live-langfuse:
+    needs: integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install benchmark and evaluation runtimes
+        run: |
+          python -m pip install -e benchmarklab -e evaluationlab
+
+      - name: Start clean self-hosted Langfuse and OpsSentinel stack
+        run: |
+          set -euo pipefail
+
+          compose() {
+            docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+              --profile observability "$@"
+          }
+
+          dump_langfuse_diagnostics() {
+            echo "::group::Langfuse Compose state"
+            compose ps -a || true
+            echo "::endgroup::"
+            echo "::group::Langfuse service logs"
+            compose logs --no-color --tail=400 \
+              langfuse-web langfuse-worker langfuse-postgres langfuse-redis \
+              langfuse-clickhouse langfuse-minio || true
+            echo "::endgroup::"
+          }
+
+          compose down -v --remove-orphans || true
+          if ! compose up -d --build \
+            postgres redis otel-collector backend chaoslab-controller \
+            checkout inventory payment worker gateway \
+            langfuse-postgres langfuse-redis langfuse-clickhouse langfuse-minio \
+            langfuse-worker langfuse-web; then
+            dump_langfuse_diagnostics
+            exit 1
+          fi
+
+          healthy=0
+          for attempt in $(seq 1 120); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:3002/api/public/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:3032/api/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            dump_langfuse_diagnostics
+            exit 1
+          fi
+
+      - name: Run real BenchmarkLab to EvaluationLab to Langfuse proof
+        run: python scripts/phase9-langfuse-smoke.py
+
+      - name: Retain safe Langfuse proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-langfuse-live
+          path: phase9-langfuse-live.json
+          if-no-files-found: error
+
+      - name: Verify restoration privacy and service state
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+            --profile observability ps --status running \
+            langfuse-web langfuse-worker | grep langfuse-web
+          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+            --profile observability ps --status running \
+            langfuse-web langfuse-worker | grep langfuse-worker
+          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+            logs backend --no-color > /tmp/opssentinel-phase9-langfuse-backend.log
+          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+            logs langfuse-web langfuse-worker --no-color \
+            > /tmp/opssentinel-phase9-langfuse-services.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" \
+            /tmp/opssentinel-phase9-langfuse-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          proof = json.loads(Path("phase9-langfuse-live.json").read_text())
+          privacy_checks = proof["privacy_checks"]
+          assert privacy_checks["fault_state_absent_from_runtime_metadata"] is True
+          assert privacy_checks["hidden_ground_truth_absent_from_runtime_metadata"] is True
+
+          runtime_metadata = proof["trace"]["runtime_metadata"]
+          runtime_text = json.dumps(runtime_metadata).lower()
+          for forbidden in (
+              "ground_truth",
+              "expected_primary_root_cause",
+              "fault_state",
+              "causal_timeline",
+          ):
+              assert forbidden not in runtime_text, forbidden
+
+          assert proof["restart_persistence_verified"] is True
+          PY
+
+      - name: Teardown
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+            --profile observability down -v --remove-orphans

@@ -9,6 +9,11 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
+    "@opentelemetry/sdk-trace-web": "2.11.0",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },
@@ -16,6 +21,7 @@
     "@types/react": "19.1.12",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "5.0.2",
+    "playwright": "1.63.0",
     "typescript": "5.9.2",
     "vite": "7.1.4"
   }

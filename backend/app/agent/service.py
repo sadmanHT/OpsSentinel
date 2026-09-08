@@ -22,6 +22,7 @@ from app.agent.providers import (
     ReasoningProvider,
 )
 from app.agent.resilience import DiminishingReturnsReasoningProvider
+from app.agent.retrieval import CappedRetrievalDepthProvider
 from app.agent.store import SqlAgentStore
 from app.agent.temporal import ExplicitTemporalReasoningProvider
 from app.agent.tool_order import ControlledToolOrderProvider
@@ -29,6 +30,8 @@ from app.agent.verification import ActiveVerificationReasoningProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
+from app.observability.provider import MeteredReasoningProvider
+from app.observability.store import SqlObservabilityStore
 from app.persistence.session import create_database_engine
 
 
@@ -50,6 +53,11 @@ class AgentService:
             )
         if settings.evidence_mode == "verification_enabled":
             controlled_provider = ActiveVerificationReasoningProvider(controlled_provider)
+        if settings.retrieval_depth_controlled:
+            controlled_provider = CappedRetrievalDepthProvider(
+                controlled_provider,
+                max_records=settings.retrieval_depth,
+            )
         if settings.temporal_reasoning == "explicit_cause_effect":
             controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
         if settings.compound_evidence_plan:
@@ -60,7 +68,12 @@ class AgentService:
         )
         if settings.stopping_strategy == "unresolved_evidence":
             resilient_provider = UnresolvedEvidenceStoppingProvider(resilient_provider)
-        self.provider = resilient_provider
+
+        self.observability_store = SqlObservabilityStore(engine)
+        self.provider: ReasoningProvider = MeteredReasoningProvider(
+            resilient_provider,
+            self.observability_store,
+        )
         resilient_registry = RetryingToolRegistry(
             registry,
             max_retries=settings.max_tool_retries,

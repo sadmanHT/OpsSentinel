@@ -1,0 +1,104 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"expr": "sum(opssentinel_agent_runs)", "refId": "A"}],
+      "title": "Agent runs",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "tokens"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"expr": "opssentinel_agent_token_usage", "refId": "A"}],
+      "title": "Agent token usage",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"expr": "opssentinel_agent_estimated_cost", "refId": "A"}],
+      "title": "Estimated run cost",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"expr": "sum(opssentinel_tool_calls)", "refId": "A"}],
+      "title": "Tool calls",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 5},
+      "id": 5,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+      "targets": [{"expr": "opssentinel_run_latency_milliseconds", "legendFormat": "{{stage}} p{{quantile}}", "refId": "A"}],
+      "title": "Run latency percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 5},
+      "id": 6,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+      "targets": [
+        {"expr": "opssentinel_agent_runs", "legendFormat": "runs {{status}}", "refId": "A"},
+        {"expr": "opssentinel_evidence_items", "legendFormat": "evidence {{type}}", "refId": "B"}
+      ],
+      "title": "Durable state",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 14},
+      "id": 7,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+      "targets": [{"expr": "opssentinel_tool_calls", "legendFormat": "{{tool}} {{status}}", "refId": "A"}],
+      "title": "Tool calls by tool/status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "opssentinel-prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 14},
+      "id": 8,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+      "targets": [{"expr": "opssentinel_model_executions", "legendFormat": "{{operation}} {{status}}", "refId": "A"}],
+      "title": "Model executions",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["opssentinel", "phase9", "observability"],
+  "templating": {"list": []},
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "OpsSentinel Operational Metrics",
+  "uid": "opssentinel-operational",
+  "version": 1,
+  "weekStart": ""
+}

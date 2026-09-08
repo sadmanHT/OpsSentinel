@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     tool_order: Literal["free", "deployment_first", "symptom_first", "adaptive"] = "free"
     tool_order_controlled: bool = False
     evidence_mode: Literal["passive_only", "verification_enabled"] = "passive_only"
+    retrieval_depth: int = Field(default=20, ge=1, le=1_000)
+    retrieval_depth_controlled: bool = False
     stopping_strategy: Literal[
         "confidence_threshold",
         "unresolved_evidence",
@@ -46,7 +48,11 @@ class Settings(BaseSettings):
     random_seed: int = 42
     langfuse_enabled: bool = False
     langfuse_host: str = "http://localhost:3000"
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
     otel_enabled: bool = False
+    otel_service_name: str = "opssentinel-backend"
+    otel_exporter_otlp_endpoint: str = "http://localhost:4318"
 
     mcp_database_url: str = (
         "postgresql://opssentinel_reader:opssentinel_readonly@localhost:5432/opssentinel"
