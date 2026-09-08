@@ -14,7 +14,12 @@ from researchlab.live_executor import (
     ARCHITECTURE_VERSION_BY_VARIANT,
     LiveTrialExecutor,
 )
-from researchlab.models import ArchitectureVariant, EvidenceMode, TrialRecord, TrialStatus
+from researchlab.models import (
+    ArchitectureVariant,
+    EvidenceMode,
+    TrialRecord,
+    TrialStatus,
+)
 from researchlab.passive_verification import (
     PASSIVE_VERIFICATION_SCENARIO_IDS,
     VERIFICATION_TOOLS,
