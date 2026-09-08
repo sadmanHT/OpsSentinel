@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     tool_order: Literal["free", "deployment_first", "symptom_first", "adaptive"] = "free"
     tool_order_controlled: bool = False
     evidence_mode: Literal["passive_only", "verification_enabled"] = "passive_only"
+    retrieval_depth: int = Field(default=20, ge=1, le=1_000)
+    retrieval_depth_controlled: bool = False
     stopping_strategy: Literal[
         "confidence_threshold",
         "unresolved_evidence",
