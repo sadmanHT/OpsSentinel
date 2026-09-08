@@ -23,9 +23,10 @@ def test_phase8_catalog_defines_all_six_controlled_experiments() -> None:
     assert [cell.configuration.tool_budget for cell in plans[1].cells] == [5, 10, 15, 20]
 
 
-def test_compound_experiment_targets_only_compound_incidents() -> None:
+def test_compound_experiment_targets_only_hidden_compound_incidents() -> None:
     compound = build_phase8_plans()[-1]
 
+    assert compound.split == ExperimentSplit.HIDDEN_TEST
     assert all(cell.difficulties == [Difficulty.COMPOUND] for cell in compound.cells)
 
 
