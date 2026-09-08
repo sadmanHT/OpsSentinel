@@ -27,6 +27,9 @@ jobs:
           ruff check benchmarklab scripts/phase10-heldout-evaluation.py
           mypy benchmarklab/benchmarklab
           pytest benchmarklab/tests/test_phase10_release_freeze.py benchmarklab/tests/test_phase10_final_report.py
+          bash -n scripts/phase10-heldout-local.sh
+          make -n phase10-freeze >/dev/null
+          make -n phase10-heldout >/dev/null
       - name: Start clean final-evaluation stack
         run: |
           set -euo pipefail
