@@ -19,6 +19,8 @@ def agent_health() -> dict[str, object]:
         "status": "ok",
         "architecture": service.runtime.architecture_version,
         "provider": service.provider.name,
+        "llm_provider": service.settings.llm_provider,
+        "llm_model": service.settings.llm_model,
         "temporal_reasoning": service.settings.temporal_reasoning,
         "tool_order": service.settings.tool_order,
         "tool_order_controlled": service.settings.tool_order_controlled,
