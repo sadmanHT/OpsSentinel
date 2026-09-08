@@ -325,13 +325,32 @@ def render_pareto_svg(report: ParetoCampaignReport) -> str:
         return top + (1.0 - accuracy) * plot_height
 
     elements = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">',
+        (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" '
+            'viewBox="0 0 960 600">'
+        ),
         '<rect x="0" y="0" width="960" height="600" fill="white"/>',
-        '<text x="480" y="28" text-anchor="middle" font-size="20">Phase 9 Pareto frontier</text>',
-        f'<line x1="{left}" y1="{top + plot_height}" x2="{left + plot_width}" y2="{top + plot_height}" stroke="black"/>',
-        f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_height}" stroke="black"/>',
-        f'<text x="{left + plot_width / 2}" y="575" text-anchor="middle" font-size="14">{escape(report.pareto.cost_basis.value)}</text>',
-        '<text x="22" y="300" text-anchor="middle" font-size="14" transform="rotate(-90 22 300)">diagnostic accuracy</text>',
+        (
+            '<text x="480" y="28" text-anchor="middle" font-size="20">'
+            "Phase 9 Pareto frontier</text>"
+        ),
+        (
+            f'<line x1="{left}" y1="{top + plot_height}" '
+            f'x2="{left + plot_width}" y2="{top + plot_height}" '
+            'stroke="black"/>'
+        ),
+        (
+            f'<line x1="{left}" y1="{top}" x2="{left}" '
+            f'y2="{top + plot_height}" stroke="black"/>'
+        ),
+        (
+            f'<text x="{left + plot_width / 2}" y="575" text-anchor="middle" '
+            f'font-size="14">{escape(report.pareto.cost_basis.value)}</text>'
+        ),
+        (
+            '<text x="22" y="300" text-anchor="middle" font-size="14" '
+            'transform="rotate(-90 22 300)">diagnostic accuracy</text>'
+        ),
     ]
 
     frontier_points = sorted(
@@ -340,11 +359,15 @@ def render_pareto_svg(report: ParetoCampaignReport) -> str:
     )
     if len(frontier_points) > 1:
         coordinates = " ".join(
-            f"{x_position(point.frontier_cost):.2f},{y_position(point.mean_diagnostic_accuracy):.2f}"
+            (
+                f"{x_position(point.frontier_cost):.2f},"
+                f"{y_position(point.mean_diagnostic_accuracy):.2f}"
+            )
             for point in frontier_points
         )
         elements.append(
-            f'<polyline points="{coordinates}" fill="none" stroke="black" stroke-width="2"/>'
+            f'<polyline points="{coordinates}" fill="none" stroke="black" '
+            'stroke-width="2"/>'
         )
 
     for point in sorted(points, key=lambda item: item.configuration.id):
@@ -352,18 +375,32 @@ def render_pareto_svg(report: ParetoCampaignReport) -> str:
         y = y_position(point.mean_diagnostic_accuracy)
         radius = 7 if point.configuration.id in frontier_ids else 5
         elements.append(
-            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{radius}" fill="white" stroke="black" stroke-width="2"/>'
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{radius}" fill="white" '
+            'stroke="black" stroke-width="2"/>'
         )
         elements.append(
-            f'<text x="{x + 9:.2f}" y="{y - 9:.2f}" font-size="12">{escape(point.configuration.id)}</text>'
+            f'<text x="{x + 9:.2f}" y="{y - 9:.2f}" font-size="12">'
+            f"{escape(point.configuration.id)}</text>"
         )
 
     elements.extend(
         [
-            f'<text x="{left}" y="{top + plot_height + 26}" text-anchor="start" font-size="11">{min_cost:.4f}</text>',
-            f'<text x="{left + plot_width}" y="{top + plot_height + 26}" text-anchor="end" font-size="11">{max_cost:.4f}</text>',
-            f'<text x="{left - 12}" y="{top + plot_height}" text-anchor="end" font-size="11">0.0</text>',
-            f'<text x="{left - 12}" y="{top + 4}" text-anchor="end" font-size="11">1.0</text>',
+            (
+                f'<text x="{left}" y="{top + plot_height + 26}" '
+                f'text-anchor="start" font-size="11">{min_cost:.4f}</text>'
+            ),
+            (
+                f'<text x="{left + plot_width}" y="{top + plot_height + 26}" '
+                f'text-anchor="end" font-size="11">{max_cost:.4f}</text>'
+            ),
+            (
+                f'<text x="{left - 12}" y="{top + plot_height}" '
+                'text-anchor="end" font-size="11">0.0</text>'
+            ),
+            (
+                f'<text x="{left - 12}" y="{top + 4}" text-anchor="end" '
+                'font-size="11">1.0</text>'
+            ),
             "</svg>",
         ]
     )
