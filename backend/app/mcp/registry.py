@@ -42,6 +42,7 @@ from app.mcp.registry_support import EmptyArgs
 from app.mcp.services import ServiceClient
 from app.mcp.tools import InvestigationTools
 from app.models.domain import RiskLevel, ToolCallStatus, utc_now
+from app.observability.tracing import mcp_tracer
 
 Handler = Callable[[Any], Awaitable[EvidenceEnvelope]]
 
@@ -96,51 +97,68 @@ class ToolRegistry:
     ) -> ToolResponse:
         started = utc_now()
         risk = RiskLevel.R0
-        try:
-            tool = self._tools.get(invocation.tool)
-            if tool is None:
-                raise InvalidToolArguments(f"unknown tool {invocation.tool!r}")
-            risk = tool.risk_level
-            authorize_tool(self.permissions, tool.name)
-            self.policy.authorize(risk, trusted_approval_id)
+        with mcp_tracer().start_as_current_span(
+            f"mcp.tool.{invocation.tool}",
+            attributes={
+                "opssentinel.mcp.tool": invocation.tool,
+                "opssentinel.mcp.principal": self.permissions.principal,
+            },
+        ) as span:
             try:
-                args = tool.args_model.model_validate(invocation.arguments)
-            except ValidationError as exc:
-                raise InvalidToolArguments("arguments do not match the tool schema") from exc
+                tool = self._tools.get(invocation.tool)
+                if tool is None:
+                    raise InvalidToolArguments(f"unknown tool {invocation.tool!r}")
+                risk = tool.risk_level
+                span.set_attribute("opssentinel.mcp.risk_level", risk.value)
+                authorize_tool(self.permissions, tool.name)
+                self.policy.authorize(risk, trusted_approval_id)
+                try:
+                    args = tool.args_model.model_validate(invocation.arguments)
+                except ValidationError as exc:
+                    raise InvalidToolArguments("arguments do not match the tool schema") from exc
 
-            try:
-                async with asyncio.timeout(self.timeout_seconds):
-                    evidence = await tool.handler(args)
-            except TimeoutError as exc:
-                raise ToolTimeout("tool execution timed out") from exc
+                try:
+                    async with asyncio.timeout(self.timeout_seconds):
+                        evidence = await tool.handler(args)
+                except TimeoutError as exc:
+                    raise ToolTimeout("tool execution timed out") from exc
 
-            encoded = json.dumps(
-                evidence.model_dump(mode="json"),
-                separators=(",", ":"),
-                default=str,
-            ).encode()
-            if len(encoded) > self.max_output_bytes:
-                raise ResultTooLarge(
-                    f"tool result exceeded {self.max_output_bytes} byte output limit"
+                encoded = json.dumps(
+                    evidence.model_dump(mode="json"),
+                    separators=(",", ":"),
+                    default=str,
+                ).encode()
+                if len(encoded) > self.max_output_bytes:
+                    raise ResultTooLarge(
+                        f"tool result exceeded {self.max_output_bytes} byte output limit"
+                    )
+                response = ToolResponse(
+                    tool=invocation.tool,
+                    status=ToolCallStatus.SUCCEEDED,
+                    risk_level=risk,
+                    started_at=started,
+                    completed_at=utc_now(),
+                    data=evidence,
                 )
-            return ToolResponse(
-                tool=invocation.tool,
-                status=ToolCallStatus.SUCCEEDED,
-                risk_level=risk,
-                started_at=started,
-                completed_at=utc_now(),
-                data=evidence,
-            )
-        except InvestigationToolError as exc:
-            status = ToolCallStatus.BLOCKED if exc.blocked else ToolCallStatus.FAILED
-            return ToolResponse(
-                tool=invocation.tool,
-                status=status,
-                risk_level=risk,
-                started_at=started,
-                completed_at=utc_now(),
-                error=ToolError(code=exc.code, message=exc.message, retryable=exc.retryable),
-            )
+                span.set_attribute("opssentinel.mcp.status", response.status.value)
+                return response
+            except InvestigationToolError as exc:
+                status = ToolCallStatus.BLOCKED if exc.blocked else ToolCallStatus.FAILED
+                span.set_attribute("opssentinel.mcp.status", status.value)
+                span.set_attribute("opssentinel.mcp.error_code", exc.code)
+                span.set_attribute("opssentinel.mcp.retryable", exc.retryable)
+                return ToolResponse(
+                    tool=invocation.tool,
+                    status=status,
+                    risk_level=risk,
+                    started_at=started,
+                    completed_at=utc_now(),
+                    error=ToolError(
+                        code=exc.code,
+                        message=exc.message,
+                        retryable=exc.retryable,
+                    ),
+                )
 
 
 def default_permissions() -> PermissionSet:
