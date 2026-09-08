@@ -19,6 +19,7 @@ from app.models.domain import (
     Diagnosis,
     Evidence,
     EvidenceType,
+    Hypothesis,
     Incident,
     IncidentSeverity,
     RiskLevel,
@@ -53,7 +54,7 @@ class StaticUsageProvider:
 
     async def update_hypotheses(
         self, state: AgentState
-    ) -> tuple[list, ProviderUsage]:
+    ) -> tuple[list[Hypothesis], ProviderUsage]:
         del state
         return [], ProviderUsage(input_tokens=8, output_tokens=1, estimated_cost=0.001)
 
