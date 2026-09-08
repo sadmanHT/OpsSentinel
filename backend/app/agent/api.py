@@ -22,6 +22,7 @@ def agent_health() -> dict[str, object]:
         "temporal_reasoning": service.settings.temporal_reasoning,
         "tool_order": service.settings.tool_order,
         "tool_order_controlled": service.settings.tool_order_controlled,
+        "evidence_mode": service.settings.evidence_mode,
         "legal_tool_count": len(service.runtime.registry.definitions()),
     }
 
