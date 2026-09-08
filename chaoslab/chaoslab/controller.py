@@ -6,10 +6,12 @@ from fastapi import FastAPI, HTTPException
 from chaoslab.config import ChaosConfig
 from chaoslab.models import FaultSpec, FaultState, FaultType, RestoreRequest
 from chaoslab.state import FaultStore
+from chaoslab.tracing import configure_chaoslab_tracing
 
 config = ChaosConfig()
 store = FaultStore(config.redis_url)
 app = FastAPI(title="ChaosLab Controller")
+configure_chaoslab_tracing(app, config)
 
 SERVICE_URLS = {
     "gateway": "http://gateway:8080",
