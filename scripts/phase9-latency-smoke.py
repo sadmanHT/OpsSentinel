@@ -39,8 +39,9 @@ def wait_for_backend() -> None:
                 and body["legal_tool_count"] == 16
             ):
                 return
-        except Exception:
-            pass
+        except (urllib.error.URLError, TimeoutError):
+            time.sleep(1)
+            continue
         time.sleep(1)
     raise AssertionError("Phase 9 latency backend did not become healthy")
 
