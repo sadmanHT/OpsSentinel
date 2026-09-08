@@ -1,9 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import ExperimentDashboard from './ExperimentDashboard'
+
+const experimentDashboardEnabled = new URLSearchParams(window.location.search).get('experiments') === '1'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {experimentDashboardEnabled ? <ExperimentDashboard /> : <App />}
   </React.StrictMode>,
 )
