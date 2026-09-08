@@ -9,8 +9,9 @@ from typing import Any
 from uuid import UUID
 
 import httpx
-from benchmarklab import BenchmarkEnvironment, BenchmarkRunner, load_catalog
 from benchmarklab.models import BenchmarkRunArtifact, Difficulty, ScenarioSpec
+
+from benchmarklab import BenchmarkEnvironment, BenchmarkRunner, load_catalog
 from evaluationlab import (
     EvaluationCase,
     EvaluationEngine,
