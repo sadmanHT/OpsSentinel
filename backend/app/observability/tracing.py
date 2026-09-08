@@ -26,7 +26,7 @@ def _traces_endpoint(endpoint: str) -> str:
     return f"{normalized}/v1/traces"
 
 
-def _redact_http_client_target(span: Span) -> None:
+def _redact_http_request_target(span: Span) -> None:
     """Remove request-target details that can encode MCP arguments or secrets."""
 
     for attribute in ("url.full", "url.query", "http.url", "http.target"):
@@ -34,12 +34,16 @@ def _redact_http_client_target(span: Span) -> None:
     span.set_attribute("opssentinel.http.request_target_redacted", True)
 
 
+def _safe_server_request_hook(span: Span, _scope: dict[str, Any]) -> None:
+    _redact_http_request_target(span)
+
+
 def _safe_httpx_request_hook(span: Span, _request: Any) -> None:
-    _redact_http_client_target(span)
+    _redact_http_request_target(span)
 
 
 async def _safe_async_httpx_request_hook(span: Span, _request: Any) -> None:
-    _redact_http_client_target(span)
+    _redact_http_request_target(span)
 
 
 def _tracer_provider(settings: Settings) -> TracerProvider:
@@ -71,7 +75,11 @@ def configure_backend_tracing(app: FastAPI, settings: Settings) -> TracerProvide
 
     provider = _tracer_provider(settings)
     if not getattr(app.state, "opssentinel_otel_instrumented", False):
-        FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
+        FastAPIInstrumentor.instrument_app(
+            app,
+            tracer_provider=provider,
+            server_request_hook=_safe_server_request_hook,
+        )
         app.state.opssentinel_otel_instrumented = True
 
     if not _httpx_instrumented:
