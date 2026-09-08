@@ -13,6 +13,7 @@ on:
       - "scripts/phase9-latency-smoke.py"
       - "docker-compose.yml"
       - ".github/workflows/phase9-latency.yml"
+      - "docs/phase-10-handoff.md"
 
 jobs:
   integrity:

@@ -20,6 +20,7 @@ on:
       - "scripts/phase9-otel-verify.py"
       - "docker-compose.yml"
       - ".github/workflows/phase9-otel.yml"
+      - "docs/phase-10-handoff.md"
 
 jobs:
   integrity:

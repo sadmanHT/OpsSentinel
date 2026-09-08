@@ -19,6 +19,7 @@ on:
       - "frontend/scripts/phase9-experiment-dashboard-proof.mjs"
       - "scripts/phase9-experiment-dashboard-live.py"
       - ".github/workflows/phase9-experiment-dashboard.yml"
+      - "docs/phase-10-handoff.md"
 
 jobs:
   experiment-dashboard:

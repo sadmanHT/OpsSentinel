@@ -15,6 +15,7 @@ on:
       - "observability/grafana/**"
       - "docker-compose.yml"
       - ".github/workflows/phase9-prometheus.yml"
+      - "docs/phase-10-handoff.md"
 
 jobs:
   integrity:
