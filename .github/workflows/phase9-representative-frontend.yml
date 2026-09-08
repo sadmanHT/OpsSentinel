@@ -1,0 +1,178 @@
+name: Phase 9 Representative Frontend
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "backend/**"
+      - "benchmarklab/**"
+      - "chaoslab/**"
+      - "evaluationlab/**"
+      - "frontend/**"
+      - "scripts/phase9-representative-frontend-live.py"
+      - "docker-compose.yml"
+      - ".github/workflows/phase9-representative-frontend.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python proof runtimes
+        run: |
+          python -m pip install -e 'benchmarklab[dev]'
+          python -m pip install -e 'evaluationlab[dev]'
+
+      - name: Install frontend proof runtime
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Validate representative frontend sources
+        run: |
+          ruff check scripts/phase9-representative-frontend-live.py
+          python -m py_compile scripts/phase9-representative-frontend-live.py
+          node --check frontend/scripts/phase9-representative-frontend-proof.mjs
+
+      - name: Frontend production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate clean Compose topology
+        run: docker compose config >/dev/null
+
+  live-representatives:
+    needs: integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPSSENTINEL_LLM_PROVIDER: deterministic
+      OPSSENTINEL_FRONTEND_URL: http://127.0.0.1:5173/
+      OPSSENTINEL_BACKEND_URL: http://127.0.0.1:8000
+      OPSSENTINEL_CONTROLLER_URL: http://127.0.0.1:8100
+      OPSSENTINEL_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install benchmark and evaluation runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+
+      - name: Install Chromium proof runtime
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Start clean OpsSentinel stack
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build \
+            postgres redis backend frontend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:5173/ >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs backend frontend chaoslab-controller checkout inventory \
+              payment worker gateway --no-color
+            exit 1
+          fi
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+
+      - name: Run easy hard adversarial and compound incidents through frontend
+        run: python scripts/phase9-representative-frontend-live.py
+
+      - name: Restart backend and verify persisted frontend runs
+        run: |
+          set -euo pipefail
+          docker compose restart backend
+          healthy=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker compose logs backend --no-color
+            exit 1
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.request import urlopen
+
+          proof = json.loads(Path("phase9-representative-frontend.json").read_text())
+          for item in proof["runs"]:
+              with urlopen(
+                  f"http://127.0.0.1:8000/agent/runs/{item['run_id']}", timeout=10
+              ) as response:
+                  run = json.load(response)
+              assert run["status"] == item["agent_status"], (run, item)
+              assert run["incident"]["scenario_id"] is None, run["incident"]
+          PY
+
+      - name: Verify clean state and critical logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend frontend chaoslab-controller checkout inventory \
+            payment worker gateway --no-color > /tmp/opssentinel-phase9-representative.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" \
+            /tmp/opssentinel-phase9-representative.log; then
+            echo "Unexpected critical log output detected"
+            exit 1
+          fi
+
+      - name: Retain safe representative frontend proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-representative-frontend
+          path: phase9-representative-frontend.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          docker compose ps || true
+          docker compose logs backend frontend chaoslab-controller checkout inventory \
+            payment worker gateway --no-color || true
+          cat phase9-representative-frontend.json || true
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans || true
