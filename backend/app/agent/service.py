@@ -5,6 +5,10 @@ from uuid import UUID
 from sqlalchemy import Engine
 
 from app.agent.architectures import ReactivePhase5Runtime
+from app.agent.compound import (
+    CompoundEvidencePlanProvider,
+    UnresolvedEvidenceStoppingProvider,
+)
 from app.agent.models import (
     AgentBudget,
     AgentRunView,
@@ -48,10 +52,15 @@ class AgentService:
             controlled_provider = ActiveVerificationReasoningProvider(controlled_provider)
         if settings.temporal_reasoning == "explicit_cause_effect":
             controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
-        self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
+        if settings.compound_evidence_plan:
+            controlled_provider = CompoundEvidencePlanProvider(controlled_provider)
+        resilient_provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
             controlled_provider,
             max_non_progress_steps=settings.max_non_progress_steps,
         )
+        if settings.stopping_strategy == "unresolved_evidence":
+            resilient_provider = UnresolvedEvidenceStoppingProvider(resilient_provider)
+        self.provider = resilient_provider
         resilient_registry = RetryingToolRegistry(
             registry,
             max_retries=settings.max_tool_retries,
