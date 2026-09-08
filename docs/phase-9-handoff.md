@@ -2,19 +2,21 @@
 
 ## Status
 
-**PRE-MERGE ACCEPTED.** Phase 9 implementation and the pre-merge cumulative acceptance matrix have passed. Phase 9 is not fully closed until PR #11 is merged with its expected head SHA and the resulting `main` merge commit passes post-merge cumulative CI.
+**FULLY CLOSED.** Phase 9 implementation, pre-merge exact-head validation, guarded merge, and post-merge cumulative validation all passed. This status-only closure record is accepted only together with a green cumulative CI result on the exact commit containing it; that final CI run is the last safeguard before Phase 10 work begins.
 
 Phase 9 started from the fully closed Phase 8 `main` head `fae661fc1634aad6a3855a1dec8dcddb16a890dd`.
 
-Current branch: `phase-9-cost-observability-ui`.
+Pre-merge accepted documentation head: `d94f19c605e6ae68f2d9f53af79bcd2b0c4b0e76`.
 
-Implementation acceptance head before this documentation synchronization: `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`.
+Guarded PR: #11, merged only with the expected head SHA above.
 
-The documentation synchronization commit that contains this file must itself pass the same exact-head checks before PR #11 is marked ready and merged.
+Phase 9 merge commit on `main`: `e993d5c6a081a665f5a8522c11178b51373f6075`.
 
-## Objective
+Post-merge cumulative CI: run `34256350908`, all jobs green, including the clean-state cumulative Compose gate and restart cleanup regression.
 
-Make cost, latency, accuracy, and investigation effort measurable; expose autonomous incident investigations to humans through operational and research views; and add production-style tracing/metrics without weakening the evidence-grounding, safety, BenchmarkLab, EvaluationLab, or ResearchLab guarantees established in Phases 1–8.
+## Objective achieved
+
+Phase 9 made cost, latency, accuracy, and investigation effort measurable; exposed autonomous incident investigations through operational and research interfaces; and added production-style tracing/metrics without weakening the evidence-grounding, safety, BenchmarkLab, EvaluationLab, or ResearchLab guarantees established in Phases 1–8.
 
 ## Accepted Phase 9 capabilities
 
@@ -44,7 +46,7 @@ Measured results:
 - each frontier configuration measured 0.80 mean diagnostic accuracy and 0.80 exact-match rate with 2.4 mean tool calls and 2.4 mean retrieved evidence;
 - verification-enabled configurations used 3.4 mean tool calls/retrieved evidence and did not improve accuracy in this cohort; two verification arms measured 0.70 accuracy;
 - every sampled configuration retained the validation negative-control false positive rather than hiding or relabeling it;
-- Pareto report artifact digest on the accepted head: `sha256:bb50ce9d12c310785519b4ae27787d3fa1c5719c4dfaa74db27be22b60784f20`.
+- accepted Pareto report artifact digest: `sha256:bb50ce9d12c310785519b4ae27787d3fa1c5719c4dfaa74db27be22b60784f20`.
 
 This is multi-factor optimization evidence, not a causal attribution to any single factor.
 
@@ -68,13 +70,13 @@ Opt-in browser tracing propagates W3C trace context through the real frontend �
 
 The trace implementation includes agent/node/tool spans, backend and ChaosLab instrumentation, service isolation, and request-target redaction. Verification fails closed on hidden-state/tool-argument leakage, and raw collector output is not retained as a CI artifact.
 
-On exact head `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`, `Phase 9 OpenTelemetry` run `34254185105` passed both integrity and live distributed-trace jobs, including clean stack startup, privacy controls, clean operational state, critical-log checks, and teardown.
+The final pre-merge exact-head OpenTelemetry workflow passed integrity and the live browser→backend→agent→MCP→ChaosLab distributed-trace proof with privacy/no-leak controls, clean operational state, critical-log checks, and teardown.
 
 ### 9.5 Prometheus and Grafana
 
 Phase 9 adds Prometheus-compatible backend/agent accounting and operational metrics plus Grafana dashboards that keep operational and research views distinct. The deterministic provider's zero token/cost measurements remain visible as zero rather than being replaced by synthetic non-zero values.
 
-On the accepted head, `Phase 9 Prometheus Grafana` run `34254185294` passed.
+The final exact-head `Phase 9 Prometheus Grafana` workflow passed.
 
 ### 9.6 Self-hosted Langfuse
 
@@ -84,11 +86,11 @@ The existing OpenTelemetry pipeline exports safe Langfuse observation semantics 
 
 The live proof runs a real BenchmarkLab scenario through the agent, evaluates it only after agent completion, attaches the real EvaluationLab score post-hoc, then restarts Langfuse web/worker and verifies trace/score readback.
 
-On the accepted head, `Phase 9 Langfuse` run `34254185273` passed. Safe artifact digest: `sha256:d680f7a356bca4b6ae66cadca18dc5519085e12063edc359afbeaa2064f2f90d`.
+Accepted safe Langfuse artifact digest: `sha256:d680f7a356bca4b6ae66cadca18dc5519085e12063edc359afbeaa2064f2f90d`.
 
 ### Human-AI Incident Console
 
-The React Incident Console now provides:
+The React Incident Console provides:
 
 - incident overview and bounded investigation launch;
 - ordered investigation timeline;
@@ -101,15 +103,11 @@ The React Incident Console now provides:
 
 The UI never displays benchmark ground truth, simulator-only causal labels, or injected fault state.
 
-`Phase 9 Incident Console` run `34254185038` passed on the accepted head.
-
 ### Experiment Dashboard and persisted evaluator cross-check
 
 `GET /observability/experiments` projects persisted EvaluationLab/experiment data for the research dashboard. The dashboard preserves configuration, tool budget, retrieval settings, scenario counts, linked agent-run counts, evaluator metrics, failure categories, and null-vs-zero semantics.
 
 The live acceptance proof starts from a fresh PostgreSQL database, applies migrations from zero, persists canonical `SqlEvaluationStore` output, cross-checks raw score rows against EvaluationLab, starts the real FastAPI backend, reads the API projection, restarts the backend, reads it again, and performs migration rollback/re-upgrade.
-
-`Phase 9 Experiment Dashboard` run `34254185080` passed on the accepted head.
 
 ### Actual-frontend representative incidents
 
@@ -136,28 +134,40 @@ This compound miss is a research result, not a CI defect, and was not tuned away
 
 Accepted representative artifact digest: `sha256:649cf7df2bac827e0da60324dac9c41fab648eadcda2cf4789b99b86dcd0c1f1`.
 
-## Cumulative pre-merge acceptance evidence
+## Final pre-merge acceptance evidence
 
-On exact head `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`, every returned required workflow completed successfully:
+All 16 returned required workflows passed on exact head `d94f19c605e6ae68f2d9f53af79bcd2b0c4b0e76`:
 
-- cumulative `CI` run `34254185086`;
-- `Phase 6 BenchmarkLab` run `34254185220`;
-- `Phase 7 EvaluationLab` run `34254185071`;
-- `Phase 8 ResearchLab` run `34254185193`;
-- `Phase 8 H3 Temporal Reasoning` run `34254185047`;
-- `Phase 8 Tool Order` run `34254185061`;
-- `Phase 8 Passive vs Verification` run `34254185134`;
-- `Phase 8 Compound Handling` run `34254185312`;
-- `Phase 9 Pareto` run `34254185136`;
-- `Phase 9 Latency` run `34254185077`;
-- `Phase 9 OpenTelemetry` run `34254185105`;
-- `Phase 9 Prometheus Grafana` run `34254185294`;
-- `Phase 9 Langfuse` run `34254185273`;
-- `Phase 9 Incident Console` run `34254185038`;
-- `Phase 9 Experiment Dashboard` run `34254185080`;
-- `Phase 9 Representative Frontend` run `34254185155`.
+- cumulative `CI` run `34255625793`;
+- `Phase 6 BenchmarkLab` run `34255625792`;
+- `Phase 7 EvaluationLab` run `34255625842`;
+- `Phase 8 ResearchLab` run `34255625706`;
+- `Phase 8 H3 Temporal Reasoning` run `34255626001`;
+- `Phase 8 Tool Order` run `34255625783`;
+- `Phase 8 Passive vs Verification` run `34255625771`;
+- `Phase 8 Compound Handling` run `34255625765`;
+- `Phase 9 Pareto` run `34255625798`;
+- `Phase 9 Latency` run `34255625821`;
+- `Phase 9 OpenTelemetry` run `34255625750`;
+- `Phase 9 Prometheus Grafana` run `34255625840`;
+- `Phase 9 Langfuse` run `34255625852`;
+- `Phase 9 Incident Console` run `34255625817`;
+- `Phase 9 Experiment Dashboard` run `34255625807`;
+- `Phase 9 Representative Frontend` run `34255625747`.
 
-The base `CI` workflow is the cumulative clean-state/restart gate: Ruff/mypy/unit/integration tests, migrations and rollback/re-upgrade, clean Docker Compose startup, Phase 2–7 live smokes, persistence checks, load generation, log inspection, fault cleanup, restart cleanup, and teardown. The Phase 8/9 dedicated workflows extend that exact-head gate with the controlled research and observability/UI surfaces added later.
+The cumulative `CI` workflow is the clean-state/restart backbone: Ruff, strict mypy, unit/integration tests, migrations and rollback/re-upgrade, frontend production build, clean Docker Compose startup, prior-phase live smokes, persistence checks, load generation, log inspection, fault cleanup, restart cleanup, and teardown. The Phase 8/9 dedicated workflows extend that exact-head gate with controlled research and observability/UI surfaces.
+
+## Post-merge acceptance evidence
+
+PR #11 merged to `main` as `e993d5c6a081a665f5a8522c11178b51373f6075` only after the exact-head matrix above was green.
+
+Push-triggered cumulative `CI` run `34256350908` then passed on that merge commit:
+
+- backend: Ruff, strict mypy, unit tests, import/startup smoke, migration upgrade, integration tests, rollback and re-upgrade — all green;
+- frontend: production build — green;
+- ChaosLab: Ruff, unit tests, import smoke — green;
+- BenchmarkLab: Ruff, strict mypy, unit/integrity tests, catalog smoke — green;
+- Compose: image build, clean-state cumulative integration gate, research artifact retention, restart cleanup regression, teardown — all green.
 
 ## Research integrity and known limitations
 
@@ -168,15 +178,6 @@ The base `CI` workflow is the cumulative clean-state/restart gate: Ruff/mypy/uni
 - Phase 8 null/negative findings remain unchanged and first-class.
 - No optional human-approval quality study was performed. Phase 9 does not fabricate one or treat its omission as evidence about human decision quality.
 
-## Remaining closure steps
+## Closure guarantee
 
-Only repository closure remains:
-
-1. this README/handoff synchronization commit must pass the exact-head cumulative CI + Phase 8/9 matrix;
-2. PR #11 must be marked ready only after those checks are green;
-3. merge must be guarded with the expected PR head SHA;
-4. the resulting `main` merge commit must pass post-merge cumulative CI before Phase 9 is declared fully closed and Phase 10 begins.
-
-## Guarantee after post-merge closure
-
-After the post-merge `main` proof passes, later phases may rely on durable cost/latency accounting, sampled Pareto analysis, distributed tracing, operational/research metrics, self-hosted Langfuse, the human Incident Console, persisted experiment dashboards, and clean-state frontend representative validation without weakening the safety or evaluator-isolation boundaries established in earlier phases.
+Once cumulative CI is green on the exact status-only commit containing this record, Phase 9 is cumulatively closed. Phase 10 may rely on durable cost/latency accounting, sampled Pareto analysis, distributed tracing, operational/research metrics, self-hosted Langfuse, the human Incident Console, persisted experiment dashboards, and clean-state frontend representative validation without weakening the safety or evaluator-isolation boundaries established in earlier phases.

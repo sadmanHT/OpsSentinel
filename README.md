@@ -23,8 +23,8 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 6 — BenchmarkLab:** fully closed; PR #8 merged and the complete post-merge Phase 1–6 cumulative gate passed on `main`. See `docs/phase-6-handoff.md`.
 - ✅ **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** fully closed after guarded PR #9 merge and post-merge cumulative validation. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
 - ✅ **Phase 8 — Controlled Research Experiments and Architecture Comparisons:** fully closed after guarded PR #10 merge and successful post-merge cumulative validation. Null and negative findings remain first-class results. See `docs/phase-8-handoff.md`.
-- 🟢 **Phase 9 — Cost/Accuracy Optimization, Observability, and Human-AI System:** implementation and pre-merge exact-head acceptance are complete on `phase-9-cost-observability-ui`. Full closure still requires guarded PR #11 merge and post-merge `main` validation. See `docs/phase-9-handoff.md`.
-- Phase 10 remains gated until Phase 9 is merged and its post-merge cumulative proof is green.
+- ✅ **Phase 9 — Cost/Accuracy Optimization, Observability, and Human-AI System:** fully closed after guarded PR #11 merge, successful post-merge cumulative validation on `main`, and the final status-only closure safeguard. See `docs/phase-9-handoff.md`.
+- **Phase 10 is the next gated phase.** It is unblocked only because Phases 1–9 are cumulatively closed; its own work must satisfy the same phase-gated acceptance discipline.
 
 ## Stack in use
 
