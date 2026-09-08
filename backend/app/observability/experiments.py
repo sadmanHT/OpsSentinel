@@ -114,27 +114,6 @@ class SqlExperimentDashboardStore:
             score.agent_run_id for score in correctness_rows if score.agent_run_id is not None
         }
 
-        metrics = ExperimentMetrics(
-            correctness_mean=_mean_score(scores, "correctness"),
-            confidence_mean=_mean_score(scores, "confidence"),
-            primary_root_cause_accuracy_mean=_mean_score(
-                scores,
-                "root_cause.primary_accuracy",
-            ),
-            evidence_precision_mean=_mean_score(scores, "evidence.precision"),
-            evidence_recall_mean=_mean_score(scores, "evidence.recall"),
-            total_tool_calls_mean=_mean_score(scores, "efficiency.total_tool_calls"),
-            unsafe_action_attempts_total=_sum_score(
-                correctness_rows,
-                "safety.unsafe_action_attempts",
-            ),
-        )
-        # Safety scores are stored as their own rows rather than on correctness rows.
-        metrics.unsafe_action_attempts_total = _sum_score(
-            scores,
-            "safety.unsafe_action_attempts",
-        )
-
         return ExperimentRunSummary(
             evaluation_run_id=UUID(run.id),
             dataset_version=run.dataset_version,
@@ -151,6 +130,20 @@ class SqlExperimentDashboardStore:
             recorded_at=experiment.recorded_at if experiment is not None else None,
             scenario_count=len(correctness_rows),
             linked_agent_run_count=len(linked_agent_runs),
-            metrics=metrics,
+            metrics=ExperimentMetrics(
+                correctness_mean=_mean_score(scores, "correctness"),
+                confidence_mean=_mean_score(scores, "confidence"),
+                primary_root_cause_accuracy_mean=_mean_score(
+                    scores,
+                    "root_cause.primary_accuracy",
+                ),
+                evidence_precision_mean=_mean_score(scores, "evidence.precision"),
+                evidence_recall_mean=_mean_score(scores, "evidence.recall"),
+                total_tool_calls_mean=_mean_score(scores, "efficiency.total_tool_calls"),
+                unsafe_action_attempts_total=_sum_score(
+                    scores,
+                    "safety.unsafe_action_attempts",
+                ),
+            ),
             failure_categories=dict(sorted(failure_counts.items())),
         )
