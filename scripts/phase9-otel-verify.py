@@ -12,6 +12,9 @@ RESOURCE_MARKER_RE = re.compile(r"(?=ResourceSpans\s+#?\d+)", re.IGNORECASE)
 MCP_SPAN_RE = re.compile(r"mcp\.tool\.[A-Za-z0-9_.-]+")
 CLIENT_KIND_RE = re.compile(r"Kind\s*:\s*(?:SpanKind\.)?Client", re.IGNORECASE)
 SERVER_KIND_RE = re.compile(r"Kind\s*:\s*(?:SpanKind\.)?Server", re.IGNORECASE)
+REQUEST_TARGET_ATTRIBUTES = ("url.full", "url.query", "http.url", "http.target")
+REDACTION_MARKER = "opssentinel.http.request_target_redacted"
+REDACTED_VALUE = "[redacted]"
 
 REQUIRED_SERVICES = (
     "opssentinel-frontend",
@@ -68,6 +71,22 @@ def _check_required(condition: bool, message: str, failures: list[str]) -> bool:
     if not condition:
         failures.append(message)
     return condition
+
+
+def _redaction_present(chunks: list[str]) -> bool:
+    text = "\n".join(chunks).lower()
+    return REDACTION_MARKER in text and REDACTED_VALUE in text
+
+
+def _unredacted_target_lines(trace_text: str) -> list[str]:
+    unsafe: list[str] = []
+    for raw_line in trace_text.splitlines():
+        line = raw_line.strip()
+        lowered = line.lower()
+        if any(attribute in lowered for attribute in REQUEST_TARGET_ATTRIBUTES):
+            if REDACTED_VALUE not in lowered:
+                unsafe.append(line[:240])
+    return unsafe
 
 
 def main() -> int:
@@ -133,10 +152,14 @@ def main() -> int:
         "chaoslab-checkout trace block does not contain a server span",
         failures,
     )
-    target_redaction_present = _check_required(
-        "opssentinel.http.request_target_redacted" in trace_text
-        and "[redacted]" in trace_text,
-        "trace does not prove HTTP client target redaction",
+    backend_redaction_present = _check_required(
+        _redaction_present(backend_chunks),
+        "backend trace block does not prove request-target redaction",
+        failures,
+    )
+    chaos_redaction_present = _check_required(
+        _redaction_present(chaos_chunks),
+        "chaoslab-checkout trace block does not prove request-target redaction",
         failures,
     )
 
@@ -153,9 +176,10 @@ def main() -> int:
         "trace contains a serialized tool-arguments field",
         failures,
     )
+    unredacted_target_lines = _unredacted_target_lines(trace_text)
     no_unredacted_query = _check_required(
-        not re.search(r"(?:url\.query|http\.target).*?(?:Str\(|=).*?(?!\[redacted\])", trace_text),
-        "trace contains a potentially unredacted request-target attribute",
+        not unredacted_target_lines,
+        f"trace contains unredacted request-target attributes: {unredacted_target_lines[:5]}",
         failures,
     )
 
@@ -166,7 +190,8 @@ def main() -> int:
         "mcp_span_present": mcp_span_present,
         "backend_client_span_present": backend_client_present,
         "chaoslab_server_span_present": chaos_server_present,
-        "http_request_target_redaction_present": target_redaction_present,
+        "backend_http_request_target_redaction_present": backend_redaction_present,
+        "chaoslab_http_request_target_redaction_present": chaos_redaction_present,
         "no_forbidden_fragments": no_forbidden_fragments,
         "no_tool_arguments": no_tool_arguments,
         "no_unredacted_query_target": no_unredacted_query,
