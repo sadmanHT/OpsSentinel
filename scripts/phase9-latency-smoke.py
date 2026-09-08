@@ -39,7 +39,7 @@ def wait_for_backend() -> None:
                 and body["legal_tool_count"] == 16
             ):
                 return
-        except (urllib.error.URLError, TimeoutError):
+        except (urllib.error.URLError, TimeoutError, ConnectionResetError):
             time.sleep(1)
             continue
         time.sleep(1)
