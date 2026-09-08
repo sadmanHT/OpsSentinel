@@ -1,0 +1,60 @@
+name: Frontend Light Visual QA
+
+on:
+  push:
+    branches:
+      - frontend-light-redesign
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Install Chromium runtime
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Start frontend
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm run dev -- --port 5173 > /tmp/opssentinel-light-visual.log 2>&1 &
+          echo $! > /tmp/opssentinel-light-visual.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/opssentinel-light-visual.log
+          exit 1
+      - name: Capture redesigned frontend
+        working-directory: frontend
+        run: node scripts/frontend-light-visual-qa.mjs
+      - name: Upload visual QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-light-visual-qa
+          path: |
+            frontend/incident-console-light.png
+            frontend/experiment-dashboard-light.png
+          if-no-files-found: error
+          retention-days: 7
+      - name: Diagnostics
+        if: failure()
+        run: cat /tmp/opssentinel-light-visual.log || true
+      - name: Stop frontend
+        if: always()
+        run: |
+          if [ -f /tmp/opssentinel-light-visual.pid ]; then
+            kill "$(cat /tmp/opssentinel-light-visual.pid)" || true
+          fi
