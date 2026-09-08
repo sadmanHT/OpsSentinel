@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: OpsSentinel
+    orgId: 1
+    folder: OpsSentinel
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
