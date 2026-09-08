@@ -2,97 +2,181 @@
 
 ## Status
 
-**IN PROGRESS.** Phase 9 started from the fully closed Phase 8 `main` head `fae661fc1634aad6a3855a1dec8dcddb16a890dd`, whose final status-only cumulative CI #252 (run `34199651802`) completed successfully.
+**PRE-MERGE ACCEPTED.** Phase 9 implementation and the pre-merge cumulative acceptance matrix have passed. Phase 9 is not fully closed until PR #11 is merged with its expected head SHA and the resulting `main` merge commit passes post-merge cumulative CI.
+
+Phase 9 started from the fully closed Phase 8 `main` head `fae661fc1634aad6a3855a1dec8dcddb16a890dd`.
 
 Current branch: `phase-9-cost-observability-ui`.
 
-This document is a live implementation record. Phase 9 must not be declared complete until the full Phase 1–9 clean-state cumulative gate, frontend E2E flows, observability trace propagation, analytics cross-checks, restart/recovery checks, and CI-equivalent validation all pass together.
+Implementation acceptance head before this documentation synchronization: `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`.
 
-## Phase 9 objective
+The documentation synchronization commit that contains this file must itself pass the same exact-head checks before PR #11 is marked ready and merged.
 
-Make practical cost/accuracy/latency tradeoffs measurable and make autonomous incident investigations inspectable by humans without weakening the evidence-grounding, safety, BenchmarkLab, EvaluationLab, or ResearchLab guarantees established in earlier phases.
+## Objective
 
-## Checkpoint 9.1 — Cost tracking and typed run observability
+Make cost, latency, accuracy, and investigation effort measurable; expose autonomous incident investigations to humans through operational and research views; and add production-style tracing/metrics without weakening the evidence-grounding, safety, BenchmarkLab, EvaluationLab, or ResearchLab guarantees established in Phases 1–8.
 
-Initial implementation scope:
+## Accepted Phase 9 capabilities
 
-- preserve the existing `AgentBudget` token/cost accounting used by prior phases;
-- add a typed `ModelExecutionEvent` for each reasoning-provider operation (`plan`, `update_hypotheses`, `enough_evidence`, `diagnose`, `recommend`);
-- retain separate input/output token counts, estimated provider cost, model latency, success/failure status, provider identity, operation, and timestamp;
-- preserve the exact inner provider `name` so Phase 8 provider-marker and treatment-isolation checks continue to observe the same experimental provider identity;
-- add migration `0006_phase9_model_executions` with a durable `model_executions` table keyed to `agent_runs`;
-- derive tool-call count and p50/p95 latency from the existing durable `tool_calls` records;
-- derive retrieval depth from the existing durable `evidence` records;
-- retain the canonical aggregate `agent_runs.token_usage` and `agent_runs.estimated_cost` as the total run accounting while exposing the new model-call breakdown separately;
-- expose `GET /observability/runs/{run_id}/cost` with explicit missing values instead of silently fabricating latency/timing measurements;
-- record metering write failures to application logs without replacing the original provider output or exception.
+### 9.1 Durable cost and run accounting
 
-The first timing surface derives time-to-first-measured-investigation-step from the earliest model/tool observation and time-to-diagnosis from the successful `diagnose` model-execution timestamp. Time-to-verified-resolution remains explicitly unavailable at this checkpoint and will be added with the Phase 9 operational trace work.
+- typed per-operation model execution records for planning, hypothesis updates, evidence sufficiency, diagnosis, and recommendation;
+- durable input/output token counts, provider-estimated cost, model/tool latency, provider/model identity, success/failure status, and timestamps;
+- aggregate run accounting linked to existing tool calls, evidence, checkpoints, and agent runs;
+- `GET /observability/runs/{run_id}/cost`;
+- explicit missing measurements instead of converting missing data to zero;
+- deterministic/local providers are allowed to report real zero tokens and `$0` cost;
+- metering failures are logged without replacing the provider output or exception.
 
-## First-checkpoint tests
+### 9.2 Cost/accuracy Pareto analysis
 
-Added coverage includes:
+The accepted campaign contains 80 real trials over ten validation scenarios and eight preregistered configurations.
 
-- metered provider preserves outputs and exact provider identity;
-- all five reasoning operations generate successful model-execution events;
-- failed provider operations generate a failed event and re-raise the original provider error;
-- p50/p95 interpolation is deterministic and empty latency sets remain explicitly missing;
-- PostgreSQL integration cross-checks the Phase 9 summary against persisted `agent_runs`, `tool_calls`, `evidence`, checkpoints, and model-execution rows.
+The sampled dimensions are tool budget, planning strategy, retrieval depth, and verification strategy. The model dimension is explicitly `unsampled_fixed_local_placeholder`; Phase 9 therefore makes no cross-model Pareto claim.
 
-## Checkpoint 9.4 — Distributed OpenTelemetry propagation and privacy controls
+Because the local provider reports legitimate zero tokens and zero monetary cost, the report uses the declared resource proxy:
 
-Phase 9.4 adds an opt-in distributed trace path across the real browser and investigation runtime without exposing hidden benchmark state or serializing MCP arguments into trace attributes.
+`mean_tool_calls + mean_total_tokens / 1000 + mean_retrieved_evidence / 10`
 
-Implementation scope:
+Measured results:
 
-- browser tracing is disabled during the normal frontend path and enabled only when the Incident Console is opened with `?otel=1`;
-- the browser creates the root span `frontend.start_investigation`, exports OTLP/HTTP to the local collector, and injects W3C `traceparent` into the same public `POST /api/agent/runs` request used by the proof UI;
-- Vite proxies `/api` to the backend so the browser propagation proof does not require broadening backend CORS policy;
-- the proof starts a public checkout investigation and requests `pause_after: "store_evidence"`, forcing the graph through planning, tool selection, a real MCP call, and evidence storage without entering remediation or approval paths;
-- backend manual spans include `agent.investigation`, `agent.node.<node>`, and `mcp.tool.<tool>` while avoiding scenario identity, hidden simulator truth, and serialized tool arguments;
-- backend and ChaosLab FastAPI/HTTPX auto-instrumentation preserve trace continuity while overwriting request-target attributes (`url.full`, `url.query`, `http.url`, `http.target`) with `[redacted]` and setting `opssentinel.http.request_target_redacted`;
-- ChaosLab resources remain service-isolated, including `chaoslab-checkout` for the representative proof;
-- the collector accepts OTLP gRPC/HTTP and exposes browser CORS only for the local frontend origins used by the proof;
-- `scripts/phase9-otel-verify.py` scopes verification to the browser-generated 32-hex trace ID and requires the frontend, backend, and checkout simulator resources, agent/MCP spans, backend client span, ChaosLab server span, request-target redaction evidence, and absence of known hidden-state/tool-argument canaries;
-- raw collector output is never uploaded as a workflow artifact; the retained artifact is only the compact verifier summary.
+- frontier configurations: `p9-c01`, `p9-c04`, `p9-c06`, `p9-c07`;
+- each frontier configuration measured 0.80 mean diagnostic accuracy and 0.80 exact-match rate with 2.4 mean tool calls and 2.4 mean retrieved evidence;
+- verification-enabled configurations used 3.4 mean tool calls/retrieved evidence and did not improve accuracy in this cohort; two verification arms measured 0.70 accuracy;
+- every sampled configuration retained the validation negative-control false positive rather than hiding or relabeling it;
+- Pareto report artifact digest on the accepted head: `sha256:bb50ce9d12c310785519b4ae27787d3fa1c5719c4dfaa74db27be22b60784f20`.
 
-### Phase 9.4 validation coverage
+This is multi-factor optimization evidence, not a causal attribution to any single factor.
 
-The dedicated `Phase 9 OpenTelemetry` workflow contains two gates:
+### 9.3 Latency analysis
 
-1. an integrity job covering Ruff, strict backend mypy, backend/ChaosLab tracing tests, frontend production build, browser-proof syntax, and Compose observability-profile validation;
-2. a clean-state live job that installs Chromium, starts the traced Compose stack, drives the real frontend with Playwright, verifies the browser → FastAPI → agent graph → MCP → ChaosLab trace chain, confirms the paused run is persisted, checks no active faults or critical backend/ChaosLab logs remain, retains only the safe proof JSON, and tears the environment down.
+Live approval-path validation measured and persisted:
 
-A validated pre-handoff checkpoint on commit `1bd91dd26ade7abe9e71eef643132c866e0668d0` completed the push workflow run `34225511683` successfully. Its safe artifact was:
+- time to first investigation step: p50 22.234 ms, p95 32.003 ms;
+- time to diagnosis: p50 497.728 ms, p95 507.223 ms;
+- time to verified resolution: one measured approved run at 1320.836 ms;
+- the rejected run correctly retained `time_to_verified_resolution = null`;
+- restart persistence was verified.
 
-- artifact name: `phase9-otel-distributed-trace`
-- artifact ID: `10055626090`
-- artifact digest: `sha256:561a1463c7d60a702d868c6fdfc6b2e76b5e94e298d96cb7eb60109a0dd4ba32`
-- proof trace ID: `87f631429b8a552ce6b5ecdf96a54cc7`
-- proof run ID: `10cd886c-6311-43e4-a22a-854848896daf`
-- observed MCP span: `mcp.tool.query_metrics`
-- observed required services: `opssentinel-frontend`, `opssentinel-backend`, `chaoslab-checkout`
-- observed required spans: `frontend.start_investigation`, `agent.investigation`, `agent.node.execute_tool`, `agent.node.store_evidence`
-- privacy checks: no forbidden hidden-state canaries, no serialized tool arguments, no unredacted request-target attributes, and request-target redaction present in both backend and ChaosLab trace blocks.
+The local deterministic provider again reported zero tokens and `$0` cost truthfully.
 
-This is pre-handoff evidence rather than the final Phase 9.4 acceptance head: updating this document necessarily advances the branch, so the dedicated OpenTelemetry workflow and cumulative Phase 6–9 regression matrix must pass again on the new exact head before the checkpoint can be accepted.
+Accepted latency artifact digest: `sha256:b7793a007097c553b5d5d7e02e26ef00c06066d74a29c6883ad14ec7ac61218c`.
 
-## Remaining Phase 9 scope
+### 9.4 Distributed OpenTelemetry
 
-Checkpoint 9.1 established the measurement foundation and Checkpoint 9.4 now has a working distributed-trace implementation, but Phase 9 remains open. Still required before Phase 9 closure:
+Opt-in browser tracing propagates W3C trace context through the real frontend → FastAPI → agent graph → MCP → ChaosLab path.
 
-1. finish and preserve the accepted cost/accuracy Pareto analysis across the implemented model/tool-budget/planning/retrieval/verification treatment surfaces;
-2. finish and preserve the latency analysis, including any explicitly measurable verified-resolution timing and aggregate p50/p95 reporting;
-3. Prometheus/Grafana integration for operational metrics;
-4. self-hosted Langfuse traces for LLM/tool/token/latency/evaluation/experiment metadata without making a paid API mandatory;
-5. React Incident Console, investigation timeline, evidence/hypothesis separation, approval UI, and experiment dashboard;
-6. frontend loading/error/agent-failure/approval/rejection/completed/compound states;
-7. dashboard-to-database/evaluation cross-checks that distinguish missing data from zero;
-8. representative easy, hard, adversarial, and compound incidents executed through the actual frontend from a clean environment;
-9. optional small human-approval quality study if feasible, with appropriately limited conclusions;
-10. exact-head Phase 1–9 cumulative regression, clean-start, restart/recovery, log inspection, persistence integrity, and CI-equivalent validation;
-11. guarded merge and post-merge `main` proof before Phase 10 begins.
+The trace implementation includes agent/node/tool spans, backend and ChaosLab instrumentation, service isolation, and request-target redaction. Verification fails closed on hidden-state/tool-argument leakage, and raw collector output is not retained as a CI artifact.
 
-## Research-integrity rule
+On exact head `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`, `Phase 9 OpenTelemetry` run `34254185105` passed both integrity and live distributed-trace jobs, including clean stack startup, privacy controls, clean operational state, critical-log checks, and teardown.
 
-Cost, latency, accuracy, calibration, or human-study results are measurements, not preferred CI outcomes. Engineering defects must be repaired until the pipeline is correct, but benchmarks, labels, scoring rules, thresholds, experimental treatments, or observations must not be changed merely to produce a preferred Phase 9 conclusion.
+### 9.5 Prometheus and Grafana
+
+Phase 9 adds Prometheus-compatible backend/agent accounting and operational metrics plus Grafana dashboards that keep operational and research views distinct. The deterministic provider's zero token/cost measurements remain visible as zero rather than being replaced by synthetic non-zero values.
+
+On the accepted head, `Phase 9 Prometheus Grafana` run `34254185294` passed.
+
+### 9.6 Self-hosted Langfuse
+
+A self-hosted Langfuse v4 stack is provided through `docker-compose.langfuse.yml` with dedicated PostgreSQL, Redis, ClickHouse, MinIO, worker, and web services.
+
+The existing OpenTelemetry pipeline exports safe Langfuse observation semantics for agent, chain, tool, and generation spans. Generation observations include model identity, latency, truthful usage/cost details, and safe experiment/run metadata without raw evidence, benchmark truth, or injected fault state.
+
+The live proof runs a real BenchmarkLab scenario through the agent, evaluates it only after agent completion, attaches the real EvaluationLab score post-hoc, then restarts Langfuse web/worker and verifies trace/score readback.
+
+On the accepted head, `Phase 9 Langfuse` run `34254185273` passed. Safe artifact digest: `sha256:d680f7a356bca4b6ae66cadca18dc5519085e12063edc359afbeaa2064f2f90d`.
+
+### Human-AI Incident Console
+
+The React Incident Console now provides:
+
+- incident overview and bounded investigation launch;
+- ordered investigation timeline;
+- separate evidence and hypothesis panels;
+- diagnosis and compound-RCA display;
+- explicit approval/rejection/abandon controls for operational actions;
+- post-action verification state;
+- loading, error, agent-failure, approval, rejection, completed, and compound states;
+- cost/latency measurement panels that distinguish missing measurements from measured zero values.
+
+The UI never displays benchmark ground truth, simulator-only causal labels, or injected fault state.
+
+`Phase 9 Incident Console` run `34254185038` passed on the accepted head.
+
+### Experiment Dashboard and persisted evaluator cross-check
+
+`GET /observability/experiments` projects persisted EvaluationLab/experiment data for the research dashboard. The dashboard preserves configuration, tool budget, retrieval settings, scenario counts, linked agent-run counts, evaluator metrics, failure categories, and null-vs-zero semantics.
+
+The live acceptance proof starts from a fresh PostgreSQL database, applies migrations from zero, persists canonical `SqlEvaluationStore` output, cross-checks raw score rows against EvaluationLab, starts the real FastAPI backend, reads the API projection, restarts the backend, reads it again, and performs migration rollback/re-upgrade.
+
+`Phase 9 Experiment Dashboard` run `34254185080` passed on the accepted head.
+
+### Actual-frontend representative incidents
+
+A clean-state Playwright gate executes preregistered BenchmarkLab representatives through the real human frontend. The browser is the only agent-launch path. The harness activates scenario faults/stimuli externally, but the browser POST contains only public incident fields and carries no scenario ID or hidden ground truth.
+
+Representatives:
+
+- easy: `ops-v1-001`;
+- hard: `ops-v1-033`;
+- adversarial: `ops-v1-035`;
+- compound: `ops-v1-043`.
+
+All four runs completed, rendered terminal/timeline/evidence/hypothesis states, survived backend restart readback, restored ChaosLab faults, and recorded zero unsafe action attempts.
+
+Measured evaluation:
+
+- aggregate primary root-cause accuracy: 1.00;
+- exact-match rate: 0.75;
+- easy/hard/adversarial exact match: true;
+- compound primary cause: correct, but secondary-cause exact match: false;
+- retained compound failure categories: `MISSED_EVIDENCE`, `TOOL_MISUSE`, `COMPOUND_CAUSE_OMISSION`, `OVERCONFIDENCE`.
+
+This compound miss is a research result, not a CI defect, and was not tuned away.
+
+Accepted representative artifact digest: `sha256:649cf7df2bac827e0da60324dac9c41fab648eadcda2cf4789b99b86dcd0c1f1`.
+
+## Cumulative pre-merge acceptance evidence
+
+On exact head `70db8a9021325ba7698189cdd0aa9c1e59dc1dcf`, every returned required workflow completed successfully:
+
+- cumulative `CI` run `34254185086`;
+- `Phase 6 BenchmarkLab` run `34254185220`;
+- `Phase 7 EvaluationLab` run `34254185071`;
+- `Phase 8 ResearchLab` run `34254185193`;
+- `Phase 8 H3 Temporal Reasoning` run `34254185047`;
+- `Phase 8 Tool Order` run `34254185061`;
+- `Phase 8 Passive vs Verification` run `34254185134`;
+- `Phase 8 Compound Handling` run `34254185312`;
+- `Phase 9 Pareto` run `34254185136`;
+- `Phase 9 Latency` run `34254185077`;
+- `Phase 9 OpenTelemetry` run `34254185105`;
+- `Phase 9 Prometheus Grafana` run `34254185294`;
+- `Phase 9 Langfuse` run `34254185273`;
+- `Phase 9 Incident Console` run `34254185038`;
+- `Phase 9 Experiment Dashboard` run `34254185080`;
+- `Phase 9 Representative Frontend` run `34254185155`.
+
+The base `CI` workflow is the cumulative clean-state/restart gate: Ruff/mypy/unit/integration tests, migrations and rollback/re-upgrade, clean Docker Compose startup, Phase 2–7 live smokes, persistence checks, load generation, log inspection, fault cleanup, restart cleanup, and teardown. The Phase 8/9 dedicated workflows extend that exact-head gate with the controlled research and observability/UI surfaces added later.
+
+## Research integrity and known limitations
+
+- The current provider/model baseline is local and deterministic. Reported zero token usage and `$0` provider cost are legitimate measurements.
+- The Phase 9 Pareto model dimension was not sampled; no cross-model optimization conclusion is supported.
+- Validation negative controls still expose a no-fault false positive in the sampled Pareto campaign.
+- The representative compound frontend run still omits a secondary cause even though the primary cause is correct.
+- Phase 8 null/negative findings remain unchanged and first-class.
+- No optional human-approval quality study was performed. Phase 9 does not fabricate one or treat its omission as evidence about human decision quality.
+
+## Remaining closure steps
+
+Only repository closure remains:
+
+1. this README/handoff synchronization commit must pass the exact-head cumulative CI + Phase 8/9 matrix;
+2. PR #11 must be marked ready only after those checks are green;
+3. merge must be guarded with the expected PR head SHA;
+4. the resulting `main` merge commit must pass post-merge cumulative CI before Phase 9 is declared fully closed and Phase 10 begins.
+
+## Guarantee after post-merge closure
+
+After the post-merge `main` proof passes, later phases may rely on durable cost/latency accounting, sampled Pareto analysis, distributed tracing, operational/research metrics, self-hosted Langfuse, the human Incident Console, persisted experiment dashboards, and clean-state frontend representative validation without weakening the safety or evaluator-isolation boundaries established in earlier phases.
