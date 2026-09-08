@@ -170,7 +170,7 @@ def build_phase8_plans(
         experiment=ExperimentKind.COMPOUND_HANDLING,
         hypothesis_id="H5",
         dataset_version=dataset_version,
-        split=split,
+        split=ExperimentSplit.HIDDEN_TEST,
         repeat_count=repeat_count,
         seed_base=8600,
         cells=[
