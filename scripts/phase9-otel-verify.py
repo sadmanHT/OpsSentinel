@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -39,7 +38,7 @@ FORBIDDEN_FRAGMENTS = (
 def _load_json(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError(f"{path} must contain a JSON object")
+        raise TypeError(f"{path} must contain a JSON object")
     return payload
 
 
@@ -83,9 +82,11 @@ def _unredacted_target_lines(trace_text: str) -> list[str]:
     for raw_line in trace_text.splitlines():
         line = raw_line.strip()
         lowered = line.lower()
-        if any(attribute in lowered for attribute in REQUEST_TARGET_ATTRIBUTES):
-            if REDACTED_VALUE not in lowered:
-                unsafe.append(line[:240])
+        if (
+            any(attribute in lowered for attribute in REQUEST_TARGET_ATTRIBUTES)
+            and REDACTED_VALUE not in lowered
+        ):
+            unsafe.append(line[:240])
     return unsafe
 
 
