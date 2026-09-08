@@ -20,6 +20,7 @@ from chaoslab.models import (
 from chaoslab.runtime import RuntimeState
 from chaoslab.state import FaultStore
 from chaoslab.telemetry import Telemetry
+from chaoslab.tracing import configure_chaoslab_tracing
 
 config = ChaosConfig()
 runtime = RuntimeState()
@@ -44,6 +45,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=f"ChaosLab {config.service_name}", lifespan=lifespan)
 app.middleware("http")(telemetry.middleware)
+configure_chaoslab_tracing(app, config)
 
 
 def active_faults() -> list[FaultState]:
