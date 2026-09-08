@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help setup setup-backend setup-frontend setup-chaoslab lint typecheck test test-unit test-integration chaoslab-test frontend-build compose-validate db-upgrade db-downgrade clean-start phase2-smoke phase3-smoke ci
+.PHONY: help setup setup-backend setup-frontend setup-chaoslab lint typecheck test test-unit test-integration chaoslab-test frontend-build compose-validate db-upgrade db-downgrade clean-start phase2-smoke phase3-smoke phase10-freeze phase10-heldout ci
 
 help:
 	@printf '%s\n' \
@@ -11,6 +11,8 @@ help:
 	  'test-integration  Run database integration tests (requires services)' \
 	  'phase2-smoke      Validate all five ChaosLab fault primitives (requires services)' \
 	  'phase3-smoke      Validate MCP evidence and safety boundary (requires services)' \
+	  'phase10-freeze    Verify the frozen OpsSentinel Benchmark v1.0 research contract' \
+	  'phase10-heldout   Reproduce the final hidden-test workflow from a clean stack' \
 	  'frontend-build    Build the React frontend' \
 	  'compose-validate  Validate Docker Compose configuration' \
 	  'db-upgrade        Apply all database migrations' \
@@ -50,6 +52,13 @@ phase2-smoke:
 
 phase3-smoke:
 	python scripts/phase3-mcp-smoke.py
+
+phase10-freeze:
+	python -m pip install -e 'benchmarklab[dev]' -e 'evaluationlab[dev]'
+	python scripts/phase10-freeze-verify.py
+
+phase10-heldout:
+	bash scripts/phase10-heldout-local.sh
 
 frontend-build:
 	cd frontend && npm run build
