@@ -29,6 +29,8 @@ from app.agent.verification import ActiveVerificationReasoningProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
+from app.observability.provider import MeteredReasoningProvider
+from app.observability.store import SqlObservabilityStore
 from app.persistence.session import create_database_engine
 
 
@@ -60,7 +62,12 @@ class AgentService:
         )
         if settings.stopping_strategy == "unresolved_evidence":
             resilient_provider = UnresolvedEvidenceStoppingProvider(resilient_provider)
-        self.provider = resilient_provider
+
+        self.observability_store = SqlObservabilityStore(engine)
+        self.provider: ReasoningProvider = MeteredReasoningProvider(
+            resilient_provider,
+            self.observability_store,
+        )
         resilient_registry = RetryingToolRegistry(
             registry,
             max_retries=settings.max_tool_retries,
