@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     random_seed: int = 42
     langfuse_enabled: bool = False
     langfuse_host: str = "http://localhost:3000"
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
     otel_enabled: bool = False
     otel_service_name: str = "opssentinel-backend"
     otel_exporter_otlp_endpoint: str = "http://localhost:4318"
