@@ -8,6 +8,7 @@ from app.agent.models import (
     AgentBudget,
     AgentState,
     InvestigationPlan,
+    PlanStep,
     ProposedAction,
     ProviderUsage,
 )
@@ -45,9 +46,17 @@ class StaticUsageProvider:
     name = "phase8-provider-marker+static-usage"
 
     async def plan(self, state: AgentState) -> tuple[InvestigationPlan, ProviderUsage]:
-        del state
         return InvestigationPlan(
-            summary="Observe without changing behavior.", steps=[]
+            summary="Observe without changing behavior.",
+            steps=[
+                PlanStep(
+                    id="phase9-observe-metrics",
+                    objective="Observe checkout latency without changing state.",
+                    tool="query_metrics",
+                    arguments={"service": state.incident.service, "metric": "p95_latency"},
+                    rationale="Use one legal read-only step for a structurally valid test plan.",
+                )
+            ],
         ), ProviderUsage(
             input_tokens=10,
             output_tokens=2,
