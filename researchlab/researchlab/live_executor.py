@@ -34,6 +34,7 @@ from researchlab.models import (
 EVALUATION_VERSION = "0.1.0"
 TEMPORAL_PROVIDER_MARKER = "temporal-cause-effect-v1"
 TOOL_ORDER_PROVIDER_MARKER = "tool-order-controlled-v1"
+ACTIVE_VERIFICATION_PROVIDER_MARKER = "active-verification-v1"
 
 ARCHITECTURE_VERSION_BY_VARIANT: dict[ArchitectureVariant, str] = {
     ArchitectureVariant.EXPLICIT_PLANNER: "phase5-safe-operational-agent-v1",
@@ -99,8 +100,6 @@ class HttpRuntimeHealthProbe:
 
 def _validate_supported_configuration(configuration: ResearchConfiguration) -> None:
     unsupported: list[str] = []
-    if configuration.evidence_mode != EvidenceMode.PASSIVE_ONLY:
-        unsupported.append(f"evidence_mode={configuration.evidence_mode.value}")
     if configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD:
         unsupported.append(
             f"stopping_strategy={configuration.stopping_strategy.value}"
@@ -229,6 +228,29 @@ class LiveTrialExecutor:
         if has_order_marker != expects_controlled_order:
             raise TreatmentIsolationError(
                 "tool-order provider marker does not match the experiment"
+            )
+
+        expected_evidence_mode = configuration.evidence_mode.value
+        observed_evidence_mode = health.get("evidence_mode")
+        if observed_evidence_mode != expected_evidence_mode:
+            raise TreatmentIsolationError(
+                "active evidence mode does not match the research cell: "
+                f"{observed_evidence_mode!r} != {expected_evidence_mode!r}"
+            )
+        expects_active_verification = (
+            configuration.evidence_mode == EvidenceMode.VERIFICATION_ENABLED
+        )
+        if (
+            identity.experiment != ExperimentKind.PASSIVE_VS_VERIFICATION
+            and expects_active_verification
+        ):
+            raise TreatmentIsolationError(
+                "active verification evidence is restricted to passive_vs_verification"
+            )
+        has_verification_marker = ACTIVE_VERIFICATION_PROVIDER_MARKER in provider
+        if has_verification_marker != expects_active_verification:
+            raise TreatmentIsolationError(
+                "active verification provider marker does not match the evidence mode"
             )
         return health
 
