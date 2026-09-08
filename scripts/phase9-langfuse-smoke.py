@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
-from benchmarklab import BenchmarkRunner, load_catalog
 from benchmarklab.models import Difficulty, ScenarioKind, ScenarioSpec
+
+from benchmarklab import BenchmarkRunner, load_catalog
 from evaluationlab import EvaluationEngine, adapt_benchmark_artifact
 
 LANGFUSE = "http://127.0.0.1:3002"
