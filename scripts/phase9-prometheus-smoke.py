@@ -68,12 +68,33 @@ def prometheus_query(expression: str) -> float:
 
 
 def assert_target_up() -> None:
-    body = wait_json(f"{PROMETHEUS}/api/v1/targets")
-    active = body["data"]["activeTargets"]
-    matching = [target for target in active if target["labels"].get("job") == "opssentinel-backend"]
-    assert len(matching) == 1, active
-    assert matching[0]["health"] == "up", matching[0]
-    assert matching[0]["scrapeUrl"].endswith("/observability/metrics"), matching[0]
+    latest_target: dict[str, Any] | None = None
+    for _ in range(60):
+        try:
+            status, body = request_json(f"{PROMETHEUS}/api/v1/targets")
+            if status == 200:
+                active = body["data"]["activeTargets"]
+                matching = [
+                    target
+                    for target in active
+                    if target["labels"].get("job") == "opssentinel-backend"
+                ]
+                if len(matching) == 1:
+                    latest_target = matching[0]
+                    assert latest_target["scrapeUrl"].endswith(
+                        "/observability/metrics"
+                    ), latest_target
+                    if latest_target["health"] == "up":
+                        return
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionResetError,
+            KeyError,
+        ):
+            pass
+        time.sleep(1)
+    raise AssertionError(f"Prometheus backend target did not recover: {latest_target}")
 
 
 def assert_grafana_provisioned() -> None:
