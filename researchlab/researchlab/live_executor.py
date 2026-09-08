@@ -98,8 +98,14 @@ class HttpRuntimeHealthProbe:
         return cast(dict[str, object], payload)
 
 
-def _validate_supported_configuration(configuration: ResearchConfiguration) -> None:
+def _validate_supported_configuration(identity: TrialIdentity) -> None:
+    configuration = identity.configuration
     unsupported: list[str] = []
+    if (
+        configuration.evidence_mode != EvidenceMode.PASSIVE_ONLY
+        and identity.experiment != ExperimentKind.PASSIVE_VS_VERIFICATION
+    ):
+        unsupported.append(f"evidence_mode={configuration.evidence_mode.value}")
     if configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD:
         unsupported.append(
             f"stopping_strategy={configuration.stopping_strategy.value}"
@@ -232,7 +238,19 @@ class LiveTrialExecutor:
 
         expected_evidence_mode = configuration.evidence_mode.value
         observed_evidence_mode = health.get("evidence_mode")
-        if observed_evidence_mode != expected_evidence_mode:
+        requires_evidence_health = (
+            identity.experiment == ExperimentKind.PASSIVE_VS_VERIFICATION
+        )
+        if requires_evidence_health and observed_evidence_mode != expected_evidence_mode:
+            raise TreatmentIsolationError(
+                "active evidence mode does not match the research cell: "
+                f"{observed_evidence_mode!r} != {expected_evidence_mode!r}"
+            )
+        if (
+            not requires_evidence_health
+            and observed_evidence_mode is not None
+            and observed_evidence_mode != expected_evidence_mode
+        ):
             raise TreatmentIsolationError(
                 "active evidence mode does not match the research cell: "
                 f"{observed_evidence_mode!r} != {expected_evidence_mode!r}"
@@ -240,13 +258,6 @@ class LiveTrialExecutor:
         expects_active_verification = (
             configuration.evidence_mode == EvidenceMode.VERIFICATION_ENABLED
         )
-        if (
-            identity.experiment != ExperimentKind.PASSIVE_VS_VERIFICATION
-            and expects_active_verification
-        ):
-            raise TreatmentIsolationError(
-                "active verification evidence is restricted to passive_vs_verification"
-            )
         has_verification_marker = ACTIVE_VERIFICATION_PROVIDER_MARKER in provider
         if has_verification_marker != expects_active_verification:
             raise TreatmentIsolationError(
@@ -356,7 +367,7 @@ class LiveTrialExecutor:
             raise TreatmentIsolationError("trial identity and scenario reference id differ")
         if identity.configuration != cell.configuration:
             raise TreatmentIsolationError("trial identity and experiment cell configuration differ")
-        _validate_supported_configuration(identity.configuration)
+        _validate_supported_configuration(identity)
         benchmark_scenario = self._scenario(scenario)
         health = await self._runtime_health(identity)
         architecture_version = ARCHITECTURE_VERSION_BY_VARIANT[
