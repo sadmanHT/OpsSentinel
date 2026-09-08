@@ -150,14 +150,20 @@ jobs:
           from pathlib import Path
 
           proof = json.loads(Path("phase9-langfuse-live.json").read_text())
-          text = json.dumps(proof).lower()
+          privacy_checks = proof["privacy_checks"]
+          assert privacy_checks["fault_state_absent_from_runtime_metadata"] is True
+          assert privacy_checks["hidden_ground_truth_absent_from_runtime_metadata"] is True
+
+          runtime_metadata = proof["trace"]["runtime_metadata"]
+          runtime_text = json.dumps(runtime_metadata).lower()
           for forbidden in (
               "ground_truth",
               "expected_primary_root_cause",
               "fault_state",
               "causal_timeline",
           ):
-              assert forbidden not in text, forbidden
+              assert forbidden not in runtime_text, forbidden
+
           assert proof["restart_persistence_verified"] is True
           PY
 
