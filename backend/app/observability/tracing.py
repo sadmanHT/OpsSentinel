@@ -9,6 +9,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import Tracer
 
 from app.config import Settings
 
@@ -66,9 +67,9 @@ def configure_backend_tracing(app: FastAPI, settings: Settings) -> TracerProvide
     return provider
 
 
-def agent_tracer():
+def agent_tracer() -> Tracer:
     return trace.get_tracer("opssentinel.agent")
 
 
-def mcp_tracer():
+def mcp_tracer() -> Tracer:
     return trace.get_tracer("opssentinel.mcp")
