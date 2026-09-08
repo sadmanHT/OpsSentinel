@@ -22,6 +22,7 @@ from app.agent.providers import (
     ReasoningProvider,
 )
 from app.agent.resilience import DiminishingReturnsReasoningProvider
+from app.agent.retrieval import CappedRetrievalDepthProvider
 from app.agent.store import SqlAgentStore
 from app.agent.temporal import ExplicitTemporalReasoningProvider
 from app.agent.tool_order import ControlledToolOrderProvider
@@ -52,6 +53,11 @@ class AgentService:
             )
         if settings.evidence_mode == "verification_enabled":
             controlled_provider = ActiveVerificationReasoningProvider(controlled_provider)
+        if settings.retrieval_depth_controlled:
+            controlled_provider = CappedRetrievalDepthProvider(
+                controlled_provider,
+                max_records=settings.retrieval_depth,
+            )
         if settings.temporal_reasoning == "explicit_cause_effect":
             controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
         if settings.compound_evidence_plan:
