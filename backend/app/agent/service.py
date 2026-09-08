@@ -21,6 +21,7 @@ from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
 from app.agent.temporal import ExplicitTemporalReasoningProvider
 from app.agent.tool_order import ControlledToolOrderProvider
+from app.agent.verification import ActiveVerificationReasoningProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
@@ -43,6 +44,8 @@ class AgentService:
                 controlled_provider,
                 mode=settings.tool_order,
             )
+        if settings.evidence_mode == "verification_enabled":
+            controlled_provider = ActiveVerificationReasoningProvider(controlled_provider)
         if settings.temporal_reasoning == "explicit_cause_effect":
             controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
         self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
