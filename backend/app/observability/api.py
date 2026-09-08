@@ -1,15 +1,19 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from prometheus_client import CONTENT_TYPE_LATEST
 
 from app.config import get_settings
 from app.observability.models import RunCostSummary, RunLatencySummary
+from app.observability.prometheus import SqlPrometheusExporter
 from app.observability.store import SqlObservabilityStore
 from app.persistence.session import create_database_engine
 
 router = APIRouter(prefix="/observability", tags=["observability"])
 settings = get_settings()
-store = SqlObservabilityStore(create_database_engine(settings))
+engine = create_database_engine(settings)
+store = SqlObservabilityStore(engine)
+prometheus_exporter = SqlPrometheusExporter(engine)
 
 
 @router.get("/runs/{run_id}/cost", response_model=RunCostSummary)
@@ -23,3 +27,11 @@ def get_run_cost_summary(run_id: UUID) -> RunCostSummary:
 @router.get("/latency", response_model=RunLatencySummary)
 def get_latency_summary() -> RunLatencySummary:
     return store.summarize_latency()
+
+
+@router.get("/metrics", response_class=Response)
+def get_prometheus_metrics() -> Response:
+    return Response(
+        content=prometheus_exporter.render(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
