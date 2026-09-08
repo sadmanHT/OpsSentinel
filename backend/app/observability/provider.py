@@ -27,10 +27,7 @@ class MeteredReasoningProvider:
     def __init__(self, inner: ReasoningProvider, sink: ModelExecutionSink) -> None:
         self.inner = inner
         self.sink = sink
-
-    @property
-    def name(self) -> str:
-        return self.inner.name
+        self.name = inner.name
 
     def _record(
         self,
