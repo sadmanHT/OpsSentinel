@@ -22,8 +22,8 @@ The project is implemented in ten gated phases. A phase is complete only after i
 - ✅ **Phase 5 — Safety, Human Approval, Verification, and Fault Recovery:** fully closed; PR #7 merged and the complete Phase 1–5 cumulative gate passed on `main`. See `docs/phase-5-handoff.md`.
 - ✅ **Phase 6 — BenchmarkLab:** fully closed; PR #8 merged and the complete post-merge Phase 1–6 cumulative gate passed on `main`. See `docs/phase-6-handoff.md`.
 - ✅ **Phase 7 — Evaluation Engine, Calibration, and Failure Taxonomy:** fully closed after guarded PR #9 merge and post-merge cumulative validation. See `docs/evaluationlab.md` and `docs/phase-7-handoff.md`.
-- 🟡 **Phase 8 — Controlled Research Experiments and Architecture Comparisons:** implementation and all six controlled research campaigns are complete on the Phase 8 branch, with null/negative findings preserved. PR #10 is in final documentation-inclusive branch validation before guarded merge and post-merge `main` proof. See `docs/phase-8-handoff.md`.
-- Phases 9–10 remain gated behind full Phase 8 merge/post-merge closure and their own cumulative completion gates.
+- ✅ **Phase 8 — Controlled Research Experiments and Architecture Comparisons:** fully closed after guarded PR #10 merge at `e893ca7a58f0af3eb71825488ac7fb2d0c9a8232` and successful post-merge cumulative CI #250. All six controlled campaigns retain their measured null/negative findings. See `docs/phase-8-handoff.md`.
+- Phases 9–10 remain gated behind their own cumulative completion gates.
 
 ## Stack in use
 
