@@ -178,5 +178,13 @@ async def test_metered_provider_emits_generation_usage_without_prompt_or_evidenc
     serialized = repr(dict(span.attributes)).lower()
     assert "public incident text" not in serialized
     assert "raw_reference" not in serialized
-    assert "evidence" not in serialized
+    attribute_keys = {str(key).lower() for key in span.attributes}
+    for forbidden_key_fragment in (
+        "prompt",
+        "observation.input",
+        "observation.output",
+        "evidence_payload",
+        "raw_reference",
+    ):
+        assert all(forbidden_key_fragment not in key for key in attribute_keys)
     assert sink.events[0].run_id == state.run_id
