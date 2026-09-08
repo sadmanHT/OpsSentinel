@@ -89,7 +89,8 @@ class LangfuseSemanticSpanProcessor(SpanProcessor):
         if name == "agent.investigation":
             span.set_attribute("langfuse.observation.type", "agent")
             span.set_attribute("langfuse.trace.name", "OpsSentinel incident investigation")
-            run_id = span.attributes.get("opssentinel.agent.run_id")
+            attributes = span.attributes or {}
+            run_id = attributes.get("opssentinel.agent.run_id")
             if isinstance(run_id, str):
                 span.set_attribute("langfuse.trace.metadata.runId", run_id)
                 span.set_attribute("langfuse.observation.metadata.runId", run_id)
