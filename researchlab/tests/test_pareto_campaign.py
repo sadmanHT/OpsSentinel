@@ -8,7 +8,7 @@ import pytest
 from benchmarklab.catalog import load_catalog
 
 from researchlab.models import ArchitectureVariant, EvidenceMode
-from researchlab.pareto import ParetoCostBasis
+from researchlab.pareto import ParetoConfiguration, ParetoCostBasis
 from researchlab.pareto_campaign import (
     MODEL_DIMENSION_STATUS,
     NO_FAULT_SCENARIO_ID,
@@ -51,17 +51,12 @@ def _complete_trials() -> list[ParetoCampaignTrial]:
     return trials
 
 
-def _factor_tuple(configuration: object) -> tuple[object, ...]:
-    item = configuration
-    assert hasattr(item, "architecture")
-    assert hasattr(item, "tool_budget")
-    assert hasattr(item, "retrieval_depth")
-    assert hasattr(item, "evidence_mode")
+def _factor_tuple(configuration: ParetoConfiguration) -> tuple[object, ...]:
     return (
-        item.architecture,
-        item.tool_budget,
-        item.retrieval_depth,
-        item.evidence_mode,
+        configuration.architecture,
+        configuration.tool_budget,
+        configuration.retrieval_depth,
+        configuration.evidence_mode,
     )
 
 
