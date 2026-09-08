@@ -16,7 +16,6 @@ from benchmarklab.final_report import (
     rate_or_none,
     sanitize_benchmark_artifact,
 )
-from benchmarklab.release import verify_release_freeze
 from benchmarklab.runner import BenchmarkRunner
 from evaluationlab.adapter import adapt_benchmark_artifact
 from evaluationlab.counterfactual import (
@@ -26,6 +25,8 @@ from evaluationlab.counterfactual import (
 )
 from evaluationlab.engine import EvaluationEngine
 from evaluationlab.models import FailureCategory
+
+from benchmarklab.release import verify_release_freeze
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_URL = "http://127.0.0.1:8000"
