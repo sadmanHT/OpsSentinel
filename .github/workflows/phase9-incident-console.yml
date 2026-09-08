@@ -1,0 +1,74 @@
+name: Phase 9 Incident Console
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/phase9-incident-console.yml"
+
+jobs:
+  incident-console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: TypeScript and production build
+        run: npm run build
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start frontend development server
+        run: |
+          set -euo pipefail
+          npm run dev -- --port 5173 > /tmp/opssentinel-phase9-console-vite.log 2>&1 &
+          echo $! > /tmp/opssentinel-phase9-console-vite.pid
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/opssentinel-phase9-console-vite.log
+            exit 1
+          fi
+
+      - name: Verify Incident Console browser states
+        run: node scripts/phase9-incident-console-proof.mjs
+
+      - name: Retain browser-state proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-incident-console-browser
+          path: frontend/phase9-incident-console-browser.json
+          if-no-files-found: error
+
+      - name: Frontend diagnostics
+        if: failure()
+        run: cat /tmp/opssentinel-phase9-console-vite.log || true
+
+      - name: Stop frontend development server
+        if: always()
+        run: |
+          if [ -f /tmp/opssentinel-phase9-console-vite.pid ]; then
+            kill "$(cat /tmp/opssentinel-phase9-console-vite.pid)" || true
+          fi
