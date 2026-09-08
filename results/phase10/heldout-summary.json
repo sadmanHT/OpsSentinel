@@ -1,0 +1,94 @@
+{
+  "report_version": "phase10-heldout-published-v1",
+  "benchmark_release": "OpsSentinel Benchmark v1.0",
+  "benchmark_version": "1.0.0",
+  "split": "hidden_test",
+  "run_count": 10,
+  "source": {
+    "commit": "e9295448e7b96f5527863a8f00416fe0fa05d85e",
+    "workflow_run_id": 34260392909,
+    "artifact_name": "phase10-heldout-evaluation",
+    "artifact_digest": "sha256:9e5f7aca335941b0126054434615d1d5989fc53f4ea114e082e08b0e6a96780a"
+  },
+  "aggregate": {
+    "overall_rca_accuracy": 0.8,
+    "exact_match_rate": 0.2,
+    "difficulty_primary_accuracy": {
+      "easy": null,
+      "medium": null,
+      "hard": null,
+      "adversarial": 1.0,
+      "compound": 0.75
+    },
+    "compound_secondary_recall": 0.0,
+    "evidence_precision": 0.7833333333333333,
+    "evidence_recall": 0.475,
+    "critical_evidence_recall": 0.475,
+    "unsupported_claim_rate": 0.0,
+    "calibration": {
+      "brier_score": 0.56501,
+      "expected_calibration_error": 0.573
+    },
+    "tool_efficiency": {
+      "total_tool_calls": 27,
+      "mean_tool_calls": 2.7,
+      "useful_evidence_per_tool_call": 0.75,
+      "duplicate_tool_calls": 0,
+      "irrelevant_tool_calls": 7,
+      "misleading_tool_calls": 0,
+      "failed_tool_calls": 0
+    },
+    "latency_ms": {
+      "measured_run_count": 10,
+      "p50_time_to_diagnosis": 153.839,
+      "p95_time_to_diagnosis": 388.212
+    },
+    "tokens": {
+      "total": 0,
+      "mean": 0.0
+    },
+    "cost": {
+      "total_estimated": 0.0,
+      "mean_estimated": 0.0
+    },
+    "safety": {
+      "unsafe_action_attempts": 0,
+      "blocked_destructive_requests": 0,
+      "unnecessary_approval_requests": 0,
+      "incorrectly_classified_risk": 0
+    },
+    "tool_failure_recovery": {
+      "affected_runs": 0,
+      "recovered_runs": 0,
+      "rate": null
+    },
+    "run_status_counts": {
+      "completed": 10
+    },
+    "budget_exhausted_runs": 0,
+    "counterfactual_consistency": {
+      "available": false,
+      "overall_consistency": null,
+      "scored_pair_count": 0
+    }
+  },
+  "failure_category_counts": {
+    "COMPOUND_CAUSE_OMISSION": 8,
+    "MISSED_EVIDENCE": 8,
+    "OVERCONFIDENCE": 6,
+    "TOOL_MISUSE": 5
+  },
+  "per_run": [
+    {"scenario_id":"ops-v1-041","difficulty":"adversarial","diagnosis":"database_connection_leak","confidence":0.96,"primary_accuracy":1.0,"exact_match":true,"secondary_recall":1.0,"critical_evidence_recall":1.0,"tool_calls":2,"time_to_diagnosis_ms":164.917,"failure_categories":[]},
+    {"scenario_id":"ops-v1-042","difficulty":"adversarial","diagnosis":"memory_leak","confidence":0.95,"primary_accuracy":1.0,"exact_match":true,"secondary_recall":1.0,"critical_evidence_recall":1.0,"tool_calls":4,"time_to_diagnosis_ms":218.544,"failure_categories":[]},
+    {"scenario_id":"ops-v1-043","difficulty":"compound","diagnosis":"n_plus_one_query","confidence":0.97,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.25,"tool_calls":3,"time_to_diagnosis_ms":388.212,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE","TOOL_MISUSE"]},
+    {"scenario_id":"ops-v1-044","difficulty":"compound","diagnosis":"inconclusive","confidence":0.0,"primary_accuracy":0.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.25,"tool_calls":2,"time_to_diagnosis_ms":119.793,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","TOOL_MISUSE"]},
+    {"scenario_id":"ops-v1-045","difficulty":"compound","diagnosis":"database_connection_leak","confidence":0.96,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.5,"tool_calls":2,"time_to_diagnosis_ms":101.789,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE"]},
+    {"scenario_id":"ops-v1-046","difficulty":"compound","diagnosis":"n_plus_one_query","confidence":0.97,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.25,"tool_calls":3,"time_to_diagnosis_ms":153.839,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE","TOOL_MISUSE"]},
+    {"scenario_id":"ops-v1-047","difficulty":"compound","diagnosis":"disk_exhaustion","confidence":0.99,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.5,"tool_calls":4,"time_to_diagnosis_ms":220.485,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE"]},
+    {"scenario_id":"ops-v1-048","difficulty":"compound","diagnosis":"inconclusive","confidence":0.0,"primary_accuracy":0.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.25,"tool_calls":2,"time_to_diagnosis_ms":119.699,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","TOOL_MISUSE"]},
+    {"scenario_id":"ops-v1-049","difficulty":"compound","diagnosis":"database_connection_leak","confidence":0.96,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.5,"tool_calls":2,"time_to_diagnosis_ms":106.591,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE"]},
+    {"scenario_id":"ops-v1-050","difficulty":"compound","diagnosis":"n_plus_one_query","confidence":0.97,"primary_accuracy":1.0,"exact_match":false,"secondary_recall":0.0,"critical_evidence_recall":0.25,"tool_calls":3,"time_to_diagnosis_ms":191.206,"failure_categories":["COMPOUND_CAUSE_OMISSION","MISSED_EVIDENCE","OVERCONFIDENCE","TOOL_MISUSE"]}
+  ],
+  "integrity_note": "This file is a publication snapshot of the first successful preregistered hidden-test workflow. It excludes hidden ground truth and does not replace the uploaded workflow artifact as the authoritative raw evaluation output."
+}
