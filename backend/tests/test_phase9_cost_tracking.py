@@ -46,7 +46,9 @@ class StaticUsageProvider:
 
     async def plan(self, state: AgentState) -> tuple[InvestigationPlan, ProviderUsage]:
         del state
-        return InvestigationPlan(summary="Observe without changing behavior."), ProviderUsage(
+        return InvestigationPlan(
+            summary="Observe without changing behavior.", steps=[]
+        ), ProviderUsage(
             input_tokens=10,
             output_tokens=2,
             estimated_cost=0.001,
