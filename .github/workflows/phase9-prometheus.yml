@@ -1,0 +1,136 @@
+name: Phase 9 Prometheus Grafana
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "backend/app/observability/**"
+      - "backend/pyproject.toml"
+      - "backend/tests/test_phase9_prometheus.py"
+      - "scripts/phase9-latency-smoke.py"
+      - "scripts/phase9-prometheus-smoke.py"
+      - "observability/prometheus.yml"
+      - "observability/grafana/**"
+      - "docker-compose.yml"
+      - ".github/workflows/phase9-prometheus.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install monitoring engineering runtime
+        run: python -m pip install -e 'backend[dev]'
+
+      - name: Ruff Phase 9 monitoring implementation
+        run: |
+          ruff check \
+            backend/app/observability/prometheus.py \
+            backend/app/observability/api.py \
+            backend/tests/test_phase9_prometheus.py \
+            scripts/phase9-prometheus-smoke.py
+
+      - name: Strict backend typing
+        working-directory: backend
+        run: mypy app
+
+      - name: Phase 9 Prometheus projection tests
+        run: pytest backend/tests/test_phase9_prometheus.py
+
+      - name: Validate Prometheus configuration
+        run: |
+          docker run --rm \
+            --entrypoint /bin/promtool \
+            -v "$PWD/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            prom/prometheus:v3.14.0 \
+            check config /etc/prometheus/prometheus.yml
+
+      - name: Validate Grafana dashboard JSON
+        run: python -m json.tool observability/grafana/dashboards/opssentinel-operational.json >/dev/null
+
+      - name: Validate observability Compose profile
+        run: docker compose --profile observability config >/dev/null
+
+  live-monitoring:
+    needs: integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Start clean monitoring stack
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose --profile observability up -d --build \
+            postgres redis backend chaoslab-controller \
+            checkout inventory payment worker gateway prometheus grafana
+
+          healthy=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8000/observability/metrics >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:9090/-/ready >/dev/null \
+              && curl --fail --silent http://127.0.0.1:3001/api/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose --profile observability ps
+            docker compose --profile observability logs --no-color
+            exit 1
+          fi
+
+      - name: Seed real persisted operational runs
+        run: python scripts/phase9-latency-smoke.py
+
+      - name: Cross-check Prometheus Grafana and restart persistence
+        run: python scripts/phase9-prometheus-smoke.py
+
+      - name: Retain safe monitoring proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-prometheus-live
+          path: phase9-prometheus-live.json
+          if-no-files-found: error
+
+      - name: Verify clean restoration and service state
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose ps --status running prometheus grafana | grep prometheus
+          docker compose ps --status running prometheus grafana | grep grafana
+          docker compose logs backend --no-color > /tmp/opssentinel-phase9-prometheus-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway \
+            --no-color > /tmp/opssentinel-phase9-prometheus-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase9-prometheus-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-phase9-prometheus-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose --profile observability down -v --remove-orphans
