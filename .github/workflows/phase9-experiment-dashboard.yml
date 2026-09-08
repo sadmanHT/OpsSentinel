@@ -84,15 +84,29 @@ jobs:
             exit 1
           fi
 
-      - name: Verify experiment dashboard browser states
+      - name: Verify experiment dashboard browser states and capture portfolio screenshot
         working-directory: frontend
-        run: node scripts/phase9-experiment-dashboard-proof.mjs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Retain experiment dashboard proof
+          path = Path("scripts/phase9-experiment-dashboard-proof.mjs")
+          text = path.read_text(encoding="utf-8")
+          needle = "  assertIncludes(secondCardText, 'Not recorded', 'missing metadata rendering')\n\n"
+          replacement = needle + "  await page.screenshot({ path: 'phase9-experiment-dashboard.png', fullPage: true })\n\n"
+          if needle not in text:
+              raise SystemExit("experiment screenshot insertion point not found")
+          path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+          PY
+          node scripts/phase9-experiment-dashboard-proof.mjs
+
+      - name: Retain experiment dashboard proof and screenshot
         uses: actions/upload-artifact@v4
         with:
           name: phase9-experiment-dashboard-browser
-          path: frontend/phase9-experiment-dashboard-browser.json
+          path: |
+            frontend/phase9-experiment-dashboard-browser.json
+            frontend/phase9-experiment-dashboard.png
           if-no-files-found: error
           retention-days: 14
 
