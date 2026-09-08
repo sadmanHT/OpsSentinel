@@ -69,6 +69,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Grafana screenshot browser runtime
+        working-directory: frontend
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
       - name: Start clean monitoring stack
         run: |
           set -euo pipefail
@@ -107,11 +117,49 @@ jobs:
       - name: Cross-check Prometheus Grafana and restart persistence
         run: python scripts/phase9-prometheus-smoke.py
 
-      - name: Retain safe monitoring proof
+      - name: Capture Grafana operational dashboard
+        working-directory: frontend
+        env:
+          OPSSENTINEL_GRAFANA_URL: http://127.0.0.1:3001/d/opssentinel-operational/opssentinel-operational-metrics?orgId=1&from=now-30m&to=now&timezone=browser
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright'
+
+          const browser = await chromium.launch({ headless: true })
+          try {
+            const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } })
+            const dashboardUrl = process.env.OPSSENTINEL_GRAFANA_URL
+            await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
+
+            if (page.url().includes('/login')) {
+              const user = page.locator('input[name="user"]')
+              const password = page.locator('input[name="password"]')
+              await user.fill('admin')
+              await password.fill('admin')
+              await page.getByRole('button', { name: /log in/i }).click()
+              await page.waitForTimeout(1200)
+              const skip = page.getByRole('button', { name: /skip/i })
+              if (await skip.count()) {
+                await skip.click()
+              }
+              await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
+            }
+
+            await page.getByText('OpsSentinel Operational Metrics', { exact: true }).waitFor({ timeout: 30000 })
+            await page.waitForTimeout(5000)
+            await page.screenshot({ path: 'phase9-grafana.png', fullPage: true })
+          } finally {
+            await browser.close()
+          }
+          NODE
+
+      - name: Retain safe monitoring proof and screenshot
         uses: actions/upload-artifact@v4
         with:
           name: phase9-prometheus-live
-          path: phase9-prometheus-live.json
+          path: |
+            phase9-prometheus-live.json
+            frontend/phase9-grafana.png
           if-no-files-found: error
 
       - name: Verify clean restoration and service state
