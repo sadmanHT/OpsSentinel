@@ -11,7 +11,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import ReadableSpan, ReadWriteSpan, SpanProcessor, TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, Span as SDKSpan, SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Span, Tracer
 
@@ -80,7 +80,7 @@ class LangfuseSemanticSpanProcessor(SpanProcessor):
 
     def on_start(
         self,
-        span: ReadWriteSpan,
+        span: SDKSpan,
         parent_context: Context | None = None,
     ) -> None:
         del parent_context
