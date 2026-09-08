@@ -9,7 +9,7 @@ settings = get_settings()
 
 app = FastAPI(
     title="OpsSentinel API",
-    version="0.4.0",
+    version="0.3.0",
     description="Research platform for autonomous incident-response agents.",
 )
 app.include_router(mcp_router)
