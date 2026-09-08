@@ -395,7 +395,10 @@ def build_passive_verification_report(
         if passive.first_planned_tool != active.first_planned_tool:
             raise ValueError(f"H4 changed the first passive step for {scenario_id}")
         if passive.planned_invocations != _strip_verification(active):
-            raise ValueError(f"H4 changed the passive planned invocation sequence for {scenario_id}")
+            raise ValueError(
+                "H4 changed the passive planned invocation sequence "
+                f"for {scenario_id}"
+            )
         paired.append(
             PassiveVerificationPairDelta(
                 scenario_id=scenario_id,
