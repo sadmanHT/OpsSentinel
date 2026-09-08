@@ -70,19 +70,38 @@ jobs:
       - name: Start clean self-hosted Langfuse and OpsSentinel stack
         run: |
           set -euo pipefail
-          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
-            --profile observability down -v --remove-orphans || true
-          docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
-            --profile observability up -d --build \
+
+          compose() {
+            docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
+              --profile observability "$@"
+          }
+
+          dump_langfuse_diagnostics() {
+            echo "::group::Langfuse Compose state"
+            compose ps -a || true
+            echo "::endgroup::"
+            echo "::group::Langfuse service logs"
+            compose logs --no-color --tail=400 \
+              langfuse-web langfuse-worker langfuse-postgres langfuse-redis \
+              langfuse-clickhouse langfuse-minio || true
+            echo "::endgroup::"
+          }
+
+          compose down -v --remove-orphans || true
+          if ! compose up -d --build \
             postgres redis otel-collector backend chaoslab-controller \
             checkout inventory payment worker gateway \
             langfuse-postgres langfuse-redis langfuse-clickhouse langfuse-minio \
-            langfuse-worker langfuse-web
+            langfuse-worker langfuse-web; then
+            dump_langfuse_diagnostics
+            exit 1
+          fi
 
           healthy=0
           for attempt in $(seq 1 120); do
             if curl --fail --silent http://127.0.0.1:8000/agent/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:3002/api/public/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:3032/api/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
               healthy=1
@@ -92,10 +111,7 @@ jobs:
           done
 
           if [ "$healthy" -ne 1 ]; then
-            docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
-              --profile observability ps
-            docker compose -f docker-compose.yml -f docker-compose.langfuse.yml \
-              --profile observability logs --no-color
+            dump_langfuse_diagnostics
             exit 1
           fi
 
