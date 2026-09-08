@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -9,7 +11,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Tracer
+from opentelemetry.trace import Span, Tracer
 
 from app.config import Settings
 
@@ -22,6 +24,22 @@ def _traces_endpoint(endpoint: str) -> str:
     if normalized.endswith("/v1/traces"):
         return normalized
     return f"{normalized}/v1/traces"
+
+
+def _redact_http_client_target(span: Span) -> None:
+    """Remove request-target details that can encode MCP arguments or secrets."""
+
+    for attribute in ("url.full", "url.query", "http.url", "http.target"):
+        span.set_attribute(attribute, "[redacted]")
+    span.set_attribute("opssentinel.http.request_target_redacted", True)
+
+
+def _safe_httpx_request_hook(span: Span, _request: Any) -> None:
+    _redact_http_client_target(span)
+
+
+async def _safe_async_httpx_request_hook(span: Span, _request: Any) -> None:
+    _redact_http_client_target(span)
 
 
 def _tracer_provider(settings: Settings) -> TracerProvider:
@@ -57,7 +75,11 @@ def configure_backend_tracing(app: FastAPI, settings: Settings) -> TracerProvide
         app.state.opssentinel_otel_instrumented = True
 
     if not _httpx_instrumented:
-        HTTPXClientInstrumentor().instrument(tracer_provider=provider)
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=provider,
+            request_hook=_safe_httpx_request_hook,
+            async_request_hook=_safe_async_httpx_request_hook,
+        )
         _httpx_instrumented = True
 
     if not _sqlalchemy_instrumented:
