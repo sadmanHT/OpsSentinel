@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     langfuse_enabled: bool = False
     langfuse_host: str = "http://localhost:3000"
     otel_enabled: bool = False
+    otel_service_name: str = "opssentinel-backend"
+    otel_exporter_otlp_endpoint: str = "http://localhost:4318"
 
     mcp_database_url: str = (
         "postgresql://opssentinel_reader:opssentinel_readonly@localhost:5432/opssentinel"
