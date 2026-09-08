@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     llm_model: str = "local-placeholder"
     llm_timeout_seconds: float = Field(default=30.0, ge=0.1, le=300.0)
     local_model_base_url: str = "http://localhost:11434"
+    agent_architecture: Literal["explicit_planner", "reactive_react"] = "explicit_planner"
+    temporal_reasoning: Literal["standard", "explicit_cause_effect"] = "standard"
+    tool_order: Literal["free", "deployment_first", "symptom_first", "adaptive"] = "free"
+    tool_order_controlled: bool = False
+    evidence_mode: Literal["passive_only", "verification_enabled"] = "passive_only"
+    stopping_strategy: Literal[
+        "confidence_threshold",
+        "unresolved_evidence",
+    ] = "confidence_threshold"
+    compound_evidence_plan: bool = False
     max_steps: int = Field(default=20, ge=1, le=200)
     max_tool_calls: int = Field(default=15, ge=1, le=200)
     max_repeated_identical_calls: int = Field(default=2, ge=1, le=20)

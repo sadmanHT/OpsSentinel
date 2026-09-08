@@ -1,0 +1,206 @@
+name: Phase 8 Passive vs Verification
+
+on:
+  push:
+    branches:
+      - phase-8-controlled-research
+  pull_request:
+    paths:
+      - "backend/app/agent/**"
+      - "backend/app/config.py"
+      - "backend/tests/test_phase8_verification.py"
+      - "benchmarklab/**"
+      - "evaluationlab/**"
+      - "researchlab/**"
+      - "scripts/phase8-passive-verification-*.py"
+      - "docker-compose.yml"
+      - ".github/workflows/phase8-passive-verification.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install H4 engineering runtimes
+        run: |
+          python -m pip install -e 'backend[dev]'
+          python -m pip install -e 'benchmarklab[dev]'
+          python -m pip install -e 'evaluationlab[dev]'
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Ruff H4 implementation
+        run: |
+          ruff check \
+            backend/app/agent/verification.py \
+            backend/app/agent/service.py \
+            backend/app/agent/api.py \
+            backend/app/config.py \
+            backend/tests/test_phase8_verification.py \
+            researchlab/researchlab/live_executor.py \
+            researchlab/researchlab/passive_verification.py \
+            researchlab/tests/test_live_executor.py \
+            researchlab/tests/test_passive_verification.py \
+            scripts/phase8-passive-verification-arm.py \
+            scripts/phase8-passive-verification-report.py
+
+      - name: Strict backend typing
+        working-directory: backend
+        run: mypy app
+
+      - name: Strict ResearchLab typing
+        run: mypy --config-file researchlab/pyproject.toml researchlab/researchlab
+
+      - name: H4 unit and isolation tests
+        run: |
+          pytest backend/tests/test_phase8_verification.py
+          pytest researchlab/tests/test_live_executor.py \
+            researchlab/tests/test_passive_verification.py
+
+  passive-verification-arm:
+    needs: integrity
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        evidence_mode:
+          - passive_only
+          - verification_enabled
+    env:
+      OPSSENTINEL_AGENT_ARCHITECTURE: explicit_planner
+      OPSSENTINEL_TEMPORAL_REASONING: standard
+      OPSSENTINEL_TOOL_ORDER: free
+      OPSSENTINEL_TOOL_ORDER_CONTROLLED: "false"
+      OPSSENTINEL_EVIDENCE_MODE: ${{ matrix.evidence_mode }}
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
+      PHASE8_EVIDENCE_MODE: ${{ matrix.evidence_mode }}
+      PHASE8_PASSIVE_VERIFICATION_ARM_OUTPUT: phase8-passive-verification-${{ matrix.evidence_mode }}.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install live research runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Start clean H4 treatment stack
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build \
+            postgres redis backend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/tmp/h4-health.json \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          health = json.loads(Path('/tmp/h4-health.json').read_text())
+          expected = os.environ['OPSSENTINEL_EVIDENCE_MODE']
+          assert health['evidence_mode'] == expected, (health, expected)
+          assert health['tool_order'] == 'free', health
+          assert health['tool_order_controlled'] is False, health
+          assert health['temporal_reasoning'] == 'standard', health
+          marker = 'active-verification-v1'
+          assert (marker in health['provider']) is (expected == 'verification_enabled')
+          assert 'tool-order-controlled-v1' not in health['provider'], health
+          assert 'temporal-cause-effect-v1' not in health['provider'], health
+          PY
+
+      - name: Execute ten-scenario H4 treatment arm
+        run: python scripts/phase8-passive-verification-arm.py
+
+      - name: Retain H4 raw trajectories
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-passive-verification-${{ matrix.evidence_mode }}
+          path: phase8-passive-verification-${{ matrix.evidence_mode }}.json
+          if-no-files-found: error
+
+      - name: Verify clean restoration and logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend --no-color > /tmp/opssentinel-h4-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway \
+            --no-color > /tmp/opssentinel-h4-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-h4-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-h4-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  passive-verification-report:
+    needs: passive-verification-arm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reporting runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e researchlab
+
+      - name: Download H4 arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phase8-passive-verification-*
+          path: phase8-passive-verification-arms
+          merge-multiple: true
+
+      - name: Build descriptive H4 report
+        run: |
+          python scripts/phase8-passive-verification-report.py \
+            --output phase8-passive-verification-report.json \
+            phase8-passive-verification-arms/phase8-passive-verification-passive_only.json \
+            phase8-passive-verification-arms/phase8-passive-verification-verification_enabled.json
+
+      - name: Retain complete H4 research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-passive-verification-report
+          path: |
+            phase8-passive-verification-report.json
+            phase8-passive-verification-arms/*.json
+          if-no-files-found: error

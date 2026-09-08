@@ -44,7 +44,7 @@ def _dict(value: object, label: str) -> dict[str, Any]:
 def _list(value: object, label: str) -> list[Any]:
     if not isinstance(value, list):
         raise ValueError(f"{label} must be a list")
-    return cast(list[Any], value)
+    return value
 
 
 def _required_string(mapping: Mapping[str, Any], key: str, label: str) -> str:

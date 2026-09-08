@@ -4,6 +4,11 @@ from uuid import UUID
 
 from sqlalchemy import Engine
 
+from app.agent.architectures import ReactivePhase5Runtime
+from app.agent.compound import (
+    CompoundEvidencePlanProvider,
+    UnresolvedEvidenceStoppingProvider,
+)
 from app.agent.models import (
     AgentBudget,
     AgentRunView,
@@ -18,6 +23,9 @@ from app.agent.providers import (
 )
 from app.agent.resilience import DiminishingReturnsReasoningProvider
 from app.agent.store import SqlAgentStore
+from app.agent.temporal import ExplicitTemporalReasoningProvider
+from app.agent.tool_order import ControlledToolOrderProvider
+from app.agent.verification import ActiveVerificationReasoningProvider
 from app.config import Settings, get_settings
 from app.mcp.registry import ToolRegistry, build_registry
 from app.mcp.retrying import RetryingToolRegistry
@@ -34,21 +42,41 @@ class AgentService:
         provider: ReasoningProvider,
     ) -> None:
         self.settings = settings
-        self.provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
-            provider,
+        controlled_provider: ReasoningProvider = provider
+        if settings.tool_order_controlled:
+            controlled_provider = ControlledToolOrderProvider(
+                controlled_provider,
+                mode=settings.tool_order,
+            )
+        if settings.evidence_mode == "verification_enabled":
+            controlled_provider = ActiveVerificationReasoningProvider(controlled_provider)
+        if settings.temporal_reasoning == "explicit_cause_effect":
+            controlled_provider = ExplicitTemporalReasoningProvider(controlled_provider)
+        if settings.compound_evidence_plan:
+            controlled_provider = CompoundEvidencePlanProvider(controlled_provider)
+        resilient_provider: ReasoningProvider = DiminishingReturnsReasoningProvider(
+            controlled_provider,
             max_non_progress_steps=settings.max_non_progress_steps,
         )
+        if settings.stopping_strategy == "unresolved_evidence":
+            resilient_provider = UnresolvedEvidenceStoppingProvider(resilient_provider)
+        self.provider = resilient_provider
         resilient_registry = RetryingToolRegistry(
             registry,
             max_retries=settings.max_tool_retries,
             backoff_seconds=settings.tool_retry_backoff_seconds,
         )
+        self.runtime_type: type[Phase5Runtime]
+        if settings.agent_architecture == "reactive_react":
+            self.runtime_type = ReactivePhase5Runtime
+        else:
+            self.runtime_type = Phase5Runtime
         self.store = SqlAgentStore(
             engine,
-            architecture_version=Phase5Runtime.architecture_version,
+            architecture_version=self.runtime_type.architecture_version,
             model=self.provider.name,
         )
-        self.runtime = Phase5Runtime(
+        self.runtime = self.runtime_type(
             registry=resilient_registry,
             provider=self.provider,
             store=self.store,
@@ -67,7 +95,7 @@ class AgentService:
     async def start(self, request: StartInvestigationRequest) -> AgentRunView:
         runtime = self.runtime
         if request.pause_after is not None:
-            runtime = Phase5Runtime(
+            runtime = self.runtime_type(
                 registry=self.runtime.registry,
                 provider=self.provider,
                 store=self.store,
