@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -62,12 +62,18 @@ def latency_distribution(values: list[float]) -> LatencyDistribution:
     )
 
 
+def _normalize_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def _as_datetime(value: object) -> datetime | None:
     if isinstance(value, datetime):
-        return value
+        return _normalize_datetime(value)
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return _normalize_datetime(datetime.fromisoformat(value.replace("Z", "+00:00")))
         except ValueError:
             return None
     return None
@@ -76,7 +82,9 @@ def _as_datetime(value: object) -> datetime | None:
 def _duration_ms(start: datetime | None, end: datetime | None) -> float | None:
     if start is None or end is None:
         return None
-    return max(0.0, (end - start).total_seconds() * 1000.0)
+    normalized_start = _normalize_datetime(start)
+    normalized_end = _normalize_datetime(end)
+    return max(0.0, (normalized_end - normalized_start).total_seconds() * 1000.0)
 
 
 def _verified_resolution_at(checkpoint: AgentCheckpointRecord | None) -> datetime | None:
