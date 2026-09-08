@@ -65,3 +65,10 @@ class RunCostSummary(StrictModel):
     time_to_first_investigation_step_ms: float | None = Field(default=None, ge=0.0)
     time_to_diagnosis_ms: float | None = Field(default=None, ge=0.0)
     time_to_verified_resolution_ms: float | None = Field(default=None, ge=0.0)
+
+
+class RunLatencySummary(StrictModel):
+    run_count: int = Field(ge=0)
+    time_to_first_investigation_step: LatencyDistribution
+    time_to_diagnosis: LatencyDistribution
+    time_to_verified_resolution: LatencyDistribution
