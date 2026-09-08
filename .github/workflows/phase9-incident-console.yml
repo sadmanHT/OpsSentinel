@@ -8,6 +8,7 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/phase9-incident-console.yml"
+      - "docs/phase-10-handoff.md"
 
 jobs:
   incident-console:
