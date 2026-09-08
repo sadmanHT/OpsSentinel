@@ -27,7 +27,12 @@ from app.models.domain import (
     RiskLevel,
     ToolCallStatus,
 )
-from app.observability.tracing import _traces_endpoint, configure_backend_tracing
+from app.observability.tracing import (
+    _safe_async_httpx_request_hook,
+    _safe_httpx_request_hook,
+    _traces_endpoint,
+    configure_backend_tracing,
+)
 
 
 class SecretArgs(BaseModel):
@@ -67,6 +72,34 @@ def test_backend_tracing_remains_disabled_by_default() -> None:
 
     assert configure_backend_tracing(app, settings) is None
     assert not getattr(app.state, "opssentinel_otel_instrumented", False)
+
+
+@pytest.mark.asyncio
+async def test_httpx_trace_hooks_redact_request_targets_before_export() -> None:
+    provider, exporter = _span_probe()
+    tracer = provider.get_tracer("test.httpx")
+    secret = "must-not-enter-http-client-span"
+    attributes = {
+        "url.full": f"http://checkout:8080/metrics?secret={secret}",
+        "url.query": f"secret={secret}",
+        "http.url": f"http://checkout:8080/metrics?secret={secret}",
+        "http.target": f"/metrics?secret={secret}",
+    }
+
+    with tracer.start_as_current_span("sync-client", attributes=attributes) as span:
+        _safe_httpx_request_hook(span, object())
+    with tracer.start_as_current_span("async-client", attributes=attributes) as span:
+        await _safe_async_httpx_request_hook(span, object())
+
+    spans = exporter.get_finished_spans()
+    assert {span.name for span in spans} == {"sync-client", "async-client"}
+    for span in spans:
+        assert span.attributes["url.full"] == "[redacted]"
+        assert span.attributes["url.query"] == "[redacted]"
+        assert span.attributes["http.url"] == "[redacted]"
+        assert span.attributes["http.target"] == "[redacted]"
+        assert span.attributes["opssentinel.http.request_target_redacted"] is True
+        assert secret not in repr(dict(span.attributes))
 
 
 @pytest.mark.asyncio
