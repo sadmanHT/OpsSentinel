@@ -23,7 +23,6 @@ from researchlab.models import (
     EvidenceMode,
     ExperimentCell,
     ExperimentKind,
-    ResearchConfiguration,
     ScenarioRef,
     StoppingStrategy,
     TemporalReasoningVariant,
