@@ -1,0 +1,39 @@
+{
+  "release": "OpsSentinel Benchmark v1.0",
+  "benchmark_name": "OpsSentinel BenchmarkLab",
+  "benchmark_version": "1.0.0",
+  "frozen_from_commit": "63eecc9f2561641204d557d3b0aa3ab95c172fa6",
+  "scenario_count": 50,
+  "difficulty_counts": {
+    "easy": 10,
+    "medium": 12,
+    "hard": 12,
+    "adversarial": 8,
+    "compound": 8
+  },
+  "split_counts": {
+    "dev": 30,
+    "validation": 10,
+    "hidden_test": 10
+  },
+  "benchmark_source_blobs": {
+    "benchmarklab/benchmarklab/catalog.py": "1b7e9052bc90db9fb0b160b080a967d0f3fb6a0c",
+    "benchmarklab/benchmarklab/definitions.py": "cd7bbfe3f0b00da90e1d514bae59ee1539c50a2f",
+    "benchmarklab/benchmarklab/models.py": "5bc58b35f8ec9a1f8483a6be858d6a6d5502ffe5",
+    "benchmarklab/benchmarklab/validation.py": "00023d152a0cfe521c3982515285bf9701553050"
+  },
+  "evaluation_metric_blobs": {
+    "evaluationlab/evaluationlab/adapter.py": "1bad4f9dea391e58917432e5a6bbbe63ed19be6b",
+    "evaluationlab/evaluationlab/counterfactual.py": "9ead096862489b595c4aecdd42892d166f3d1048",
+    "evaluationlab/evaluationlab/engine.py": "1b0db870276cd38b4f4de16f81e760009d338aa5",
+    "evaluationlab/evaluationlab/metrics.py": "fbbdccdca7830b9b9b6f7e2aa25ee32037442df6",
+    "evaluationlab/evaluationlab/models.py": "b67349e93e1204723e4e3403d2b3805a7f17bd2c",
+    "evaluationlab/evaluationlab/reporting.py": "bac3b4ae37c861404e109f35112fbff7876630e2"
+  },
+  "policy": {
+    "hidden_test_may_change_after_final_results": false,
+    "ground_truth_may_change_after_final_results": false,
+    "metric_definitions_may_change_after_final_results": false,
+    "research_results_may_be_tuned": false
+  }
+}
