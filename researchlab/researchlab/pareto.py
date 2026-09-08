@@ -130,7 +130,9 @@ def build_pareto_report(observations: list[ParetoObservation]) -> ParetoReport:
         configurations[config.id] = config.model_copy(deep=True)
         grouped[config.id].append(observation)
 
-    aggregates: list[tuple[ParetoConfiguration, int, float, float, float, float, float]] = []
+    aggregates: list[
+        tuple[ParetoConfiguration, int, float, float, float, float, float, float]
+    ] = []
     for config_id in sorted(grouped):
         rows = grouped[config_id]
         mean_accuracy = fmean(row.diagnostic_accuracy for row in rows)
