@@ -34,6 +34,8 @@ EVALUATION_VERSION = "0.1.0"
 TEMPORAL_PROVIDER_MARKER = "temporal-cause-effect-v1"
 TOOL_ORDER_PROVIDER_MARKER = "tool-order-controlled-v1"
 ACTIVE_VERIFICATION_PROVIDER_MARKER = "active-verification-v1"
+COMPOUND_EVIDENCE_PROVIDER_MARKER = "compound-evidence-plan-v1"
+UNRESOLVED_EVIDENCE_PROVIDER_MARKER = "unresolved-evidence-stop-v1"
 
 ARCHITECTURE_VERSION_BY_VARIANT: dict[ArchitectureVariant, str] = {
     ArchitectureVariant.EXPLICIT_PLANNER: "phase5-safe-operational-agent-v1",
@@ -105,7 +107,10 @@ def _validate_supported_configuration(identity: TrialIdentity) -> None:
         and identity.experiment != ExperimentKind.PASSIVE_VS_VERIFICATION
     ):
         unsupported.append(f"evidence_mode={configuration.evidence_mode.value}")
-    if configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD:
+    if (
+        configuration.stopping_strategy != StoppingStrategy.CONFIDENCE_THRESHOLD
+        and identity.experiment != ExperimentKind.COMPOUND_HANDLING
+    ):
         unsupported.append(
             f"stopping_strategy={configuration.stopping_strategy.value}"
         )
@@ -124,6 +129,9 @@ def _score_payload(
     return {
         "root_cause_accuracy": result.root_cause.primary_accuracy,
         "exact_match": float(result.root_cause.exact_match),
+        "secondary_recall": result.root_cause.secondary_recall,
+        "multi_root_cause_precision": result.root_cause.multi_root_cause_precision,
+        "multi_root_cause_recall": result.root_cause.multi_root_cause_recall,
         "evidence_precision": result.evidence.precision,
         "evidence_recall": result.evidence.recall,
         "critical_evidence_recall": result.evidence.critical_recall,
@@ -261,6 +269,51 @@ class LiveTrialExecutor:
         if has_verification_marker != expects_active_verification:
             raise TreatmentIsolationError(
                 "active verification provider marker does not match the evidence mode"
+            )
+
+        requires_compound_plan = identity.experiment == ExperimentKind.COMPOUND_HANDLING
+        observed_compound_plan = health.get("compound_evidence_plan")
+        if requires_compound_plan and observed_compound_plan is not True:
+            raise TreatmentIsolationError(
+                "H5 requires the shared compound evidence plan to be active"
+            )
+        if (
+            not requires_compound_plan
+            and observed_compound_plan is not None
+            and observed_compound_plan is not False
+        ):
+            raise TreatmentIsolationError(
+                "compound evidence plan is active outside the H5 experiment"
+            )
+        has_compound_marker = COMPOUND_EVIDENCE_PROVIDER_MARKER in provider
+        if has_compound_marker != requires_compound_plan:
+            raise TreatmentIsolationError(
+                "compound evidence provider marker does not match the experiment"
+            )
+
+        expected_stopping = configuration.stopping_strategy.value
+        observed_stopping = health.get("stopping_strategy")
+        if requires_compound_plan and observed_stopping != expected_stopping:
+            raise TreatmentIsolationError(
+                "active stopping strategy does not match the H5 research cell: "
+                f"{observed_stopping!r} != {expected_stopping!r}"
+            )
+        if (
+            not requires_compound_plan
+            and observed_stopping is not None
+            and observed_stopping != expected_stopping
+        ):
+            raise TreatmentIsolationError(
+                "active stopping strategy does not match the research cell: "
+                f"{observed_stopping!r} != {expected_stopping!r}"
+            )
+        expects_unresolved_marker = (
+            configuration.stopping_strategy == StoppingStrategy.UNRESOLVED_EVIDENCE
+        )
+        has_unresolved_marker = UNRESOLVED_EVIDENCE_PROVIDER_MARKER in provider
+        if has_unresolved_marker != expects_unresolved_marker:
+            raise TreatmentIsolationError(
+                "unresolved-evidence provider marker does not match the stopping strategy"
             )
         return health
 
