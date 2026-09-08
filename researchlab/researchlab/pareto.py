@@ -204,6 +204,7 @@ def build_pareto_report(observations: list[ParetoObservation]) -> ParetoReport:
 
     frontier = [point for point in points if not point.dominated]
     zero_cost_frontier = [point for point in frontier if point.frontier_cost == 0.0]
+    best: ParetoPoint | None
     if zero_cost_frontier:
         best = min(
             zero_cost_frontier,
@@ -219,7 +220,7 @@ def build_pareto_report(observations: list[ParetoObservation]) -> ParetoReport:
             min(
                 ratio_points,
                 key=lambda point: (
-                    -float(point.accuracy_per_cost),
+                    -(point.accuracy_per_cost or 0.0),
                     -point.mean_diagnostic_accuracy,
                     point.frontier_cost,
                     point.configuration.id,
