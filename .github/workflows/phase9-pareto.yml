@@ -1,0 +1,350 @@
+name: Phase 9 Pareto
+
+on:
+  push:
+    branches:
+      - phase-9-cost-observability-ui
+  pull_request:
+    paths:
+      - "backend/app/agent/**"
+      - "backend/app/observability/**"
+      - "backend/app/config.py"
+      - "backend/tests/test_phase9_retrieval_depth.py"
+      - "benchmarklab/**"
+      - "evaluationlab/**"
+      - "researchlab/**"
+      - "scripts/phase9-pareto-*.py"
+      - "docker-compose.yml"
+      - ".github/workflows/phase9-pareto.yml"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Pareto engineering runtimes
+        run: |
+          python -m pip install -e 'backend[dev]'
+          python -m pip install -e 'benchmarklab[dev]'
+          python -m pip install -e 'evaluationlab[dev]'
+          python -m pip install -e 'researchlab[dev]'
+
+      - name: Ruff Pareto implementation
+        run: |
+          ruff check \
+            backend/app/agent/api.py \
+            backend/app/agent/retrieval.py \
+            backend/tests/test_phase9_retrieval_depth.py \
+            researchlab/researchlab/pareto.py \
+            researchlab/researchlab/pareto_campaign.py \
+            researchlab/researchlab/pareto_live.py \
+            researchlab/tests/test_pareto.py \
+            researchlab/tests/test_pareto_campaign.py \
+            researchlab/tests/test_pareto_live.py \
+            scripts/phase9-pareto-arm.py \
+            scripts/phase9-pareto-report.py
+
+      - name: Strict backend typing
+        working-directory: backend
+        run: mypy app
+
+      - name: Strict ResearchLab typing
+        run: mypy --config-file researchlab/pyproject.toml researchlab/researchlab
+
+      - name: Pareto unit and integrity tests
+        run: |
+          pytest backend/tests/test_phase9_retrieval_depth.py
+          pytest \
+            researchlab/tests/test_pareto.py \
+            researchlab/tests/test_pareto_campaign.py \
+            researchlab/tests/test_pareto_live.py
+
+  arm:
+    needs: integrity
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: p9-c01
+            architecture: reactive_react
+            budget: 5
+            retrieval: 5
+            evidence: passive_only
+          - id: p9-c02
+            architecture: reactive_react
+            budget: 5
+            retrieval: 20
+            evidence: verification_enabled
+          - id: p9-c03
+            architecture: reactive_react
+            budget: 15
+            retrieval: 5
+            evidence: verification_enabled
+          - id: p9-c04
+            architecture: reactive_react
+            budget: 15
+            retrieval: 20
+            evidence: passive_only
+          - id: p9-c05
+            architecture: explicit_planner
+            budget: 5
+            retrieval: 5
+            evidence: verification_enabled
+          - id: p9-c06
+            architecture: explicit_planner
+            budget: 5
+            retrieval: 20
+            evidence: passive_only
+          - id: p9-c07
+            architecture: explicit_planner
+            budget: 15
+            retrieval: 5
+            evidence: passive_only
+          - id: p9-c08
+            architecture: explicit_planner
+            budget: 15
+            retrieval: 20
+            evidence: verification_enabled
+    env:
+      OPSSENTINEL_AGENT_ARCHITECTURE: ${{ matrix.architecture }}
+      OPSSENTINEL_TEMPORAL_REASONING: standard
+      OPSSENTINEL_TOOL_ORDER: free
+      OPSSENTINEL_TOOL_ORDER_CONTROLLED: "false"
+      OPSSENTINEL_EVIDENCE_MODE: ${{ matrix.evidence }}
+      OPSSENTINEL_RETRIEVAL_DEPTH: ${{ matrix.retrieval }}
+      OPSSENTINEL_RETRIEVAL_DEPTH_CONTROLLED: "true"
+      OPSSENTINEL_STOPPING_STRATEGY: confidence_threshold
+      OPSSENTINEL_COMPOUND_EVIDENCE_PLAN: "false"
+      OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
+      PHASE9_PARETO_CONFIG_ID: ${{ matrix.id }}
+      PHASE9_PARETO_ARM_OUTPUT: phase9-pareto-${{ matrix.id }}.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install live Pareto runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+          python -m pip install -e researchlab
+
+      - name: Start clean Pareto treatment stack
+        run: |
+          set -euo pipefail
+          docker compose down -v --remove-orphans || true
+          docker compose up -d --build \
+            postgres redis backend chaoslab-controller \
+            checkout inventory payment worker gateway
+
+          healthy=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health >/tmp/pareto-health.json \
+              && curl --fail --silent http://127.0.0.1:8100/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8101/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8102/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8103/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8104/health >/dev/null; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs --no-color
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          health = json.loads(Path('/tmp/pareto-health.json').read_text())
+          architecture = os.environ['OPSSENTINEL_AGENT_ARCHITECTURE']
+          expected_architecture = {
+              'explicit_planner': 'phase5-safe-operational-agent-v1',
+              'reactive_react': 'phase5-safe-operational-agent-v1-reactive-react-v1',
+          }[architecture]
+          assert health['architecture'] == expected_architecture, health
+          assert health['llm_provider'] == 'local', health
+          assert health['llm_model'] == 'local-placeholder', health
+          assert health['temporal_reasoning'] == 'standard', health
+          assert health['tool_order'] == 'free', health
+          assert health['tool_order_controlled'] is False, health
+          assert health['evidence_mode'] == os.environ['OPSSENTINEL_EVIDENCE_MODE'], health
+          assert health['retrieval_depth'] == int(os.environ['OPSSENTINEL_RETRIEVAL_DEPTH']), health
+          assert health['retrieval_depth_controlled'] is True, health
+          assert health['stopping_strategy'] == 'confidence_threshold', health
+          assert health['compound_evidence_plan'] is False, health
+          assert 'retrieval-depth-cap-v1' in health['provider'], health
+          expects_verification = os.environ['OPSSENTINEL_EVIDENCE_MODE'] == 'verification_enabled'
+          assert ('active-verification-v1' in health['provider']) is expects_verification, health
+          for marker in (
+              'tool-order-controlled-v1',
+              'temporal-cause-effect-v1',
+              'compound-evidence-plan-v1',
+              'unresolved-evidence-stop-v1',
+          ):
+              assert marker not in health['provider'], health
+          PY
+
+      - name: Execute ten-scenario Pareto arm
+        run: python scripts/phase9-pareto-arm.py
+
+      - name: Verify cost summary survives backend restart
+        run: |
+          set -euo pipefail
+          export RUN_ID="$(python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path(os.environ['PHASE9_PARETO_ARM_OUTPUT']).read_text())
+          trials = payload['trials']
+          assert len(trials) == 10
+          print(trials[-1]['agent_run_id'])
+          PY
+          )"
+
+          curl --fail --silent \
+            "http://127.0.0.1:8000/observability/runs/${RUN_ID}/cost" \
+            > /tmp/pareto-cost-before.json
+
+          docker compose restart backend
+
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/agent/health \
+              >/tmp/pareto-health-after-restart.json; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker compose ps
+            docker compose logs backend --no-color
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          health = json.loads(Path('/tmp/pareto-health-after-restart.json').read_text())
+          architecture = os.environ['OPSSENTINEL_AGENT_ARCHITECTURE']
+          expected_architecture = {
+              'explicit_planner': 'phase5-safe-operational-agent-v1',
+              'reactive_react': 'phase5-safe-operational-agent-v1-reactive-react-v1',
+          }[architecture]
+          assert health['architecture'] == expected_architecture, health
+          assert health['llm_provider'] == 'local', health
+          assert health['llm_model'] == 'local-placeholder', health
+          assert health['evidence_mode'] == os.environ['OPSSENTINEL_EVIDENCE_MODE'], health
+          assert health['retrieval_depth'] == int(os.environ['OPSSENTINEL_RETRIEVAL_DEPTH']), health
+          assert health['retrieval_depth_controlled'] is True, health
+          assert 'retrieval-depth-cap-v1' in health['provider'], health
+          PY
+
+          curl --fail --silent \
+            "http://127.0.0.1:8000/observability/runs/${RUN_ID}/cost" \
+            > /tmp/pareto-cost-after.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          before = json.loads(Path('/tmp/pareto-cost-before.json').read_text())
+          after = json.loads(Path('/tmp/pareto-cost-after.json').read_text())
+          assert before == after, (before, after)
+          assert before['run_id']
+          assert before['tool_call_count'] >= 0
+          assert before['retrieval_depth'] >= 0
+          PY
+
+      - name: Retain Pareto arm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-pareto-${{ matrix.id }}
+          path: phase9-pareto-${{ matrix.id }}.json
+          if-no-files-found: error
+
+      - name: Verify clean restoration and logs
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://127.0.0.1:8100/faults | grep '^\[\]$'
+          docker compose logs backend --no-color > /tmp/opssentinel-pareto-backend.log
+          docker compose logs chaoslab-controller checkout inventory payment worker gateway \
+            --no-color > /tmp/opssentinel-pareto-chaoslab.log
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-pareto-backend.log; then
+            echo "Unexpected critical backend log output detected"
+            exit 1
+          fi
+          if grep -E "Traceback|Unhandled exception|CRITICAL" /tmp/opssentinel-pareto-chaoslab.log; then
+            echo "Unexpected critical ChaosLab log output detected"
+            exit 1
+          fi
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  report:
+    needs: arm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Pareto reporting runtimes
+        run: |
+          python -m pip install -e benchmarklab
+          python -m pip install -e evaluationlab
+          python -m pip install -e researchlab
+
+      - name: Download Pareto arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phase9-pareto-p9-*
+          path: phase9-pareto-arms
+          merge-multiple: true
+
+      - name: Build Pareto optimization report and SVG
+        run: |
+          python scripts/phase9-pareto-report.py \
+            --output phase9-pareto-report.json \
+            --svg phase9-pareto-frontier.svg \
+            phase9-pareto-arms/phase9-pareto-p9-c01.json \
+            phase9-pareto-arms/phase9-pareto-p9-c02.json \
+            phase9-pareto-arms/phase9-pareto-p9-c03.json \
+            phase9-pareto-arms/phase9-pareto-p9-c04.json \
+            phase9-pareto-arms/phase9-pareto-p9-c05.json \
+            phase9-pareto-arms/phase9-pareto-p9-c06.json \
+            phase9-pareto-arms/phase9-pareto-p9-c07.json \
+            phase9-pareto-arms/phase9-pareto-p9-c08.json
+
+      - name: Retain complete Pareto optimization artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-pareto-report
+          path: |
+            phase9-pareto-report.json
+            phase9-pareto-frontier.svg
+            phase9-pareto-arms/*.json
+          if-no-files-found: error
