@@ -1,12 +1,52 @@
 # OpsSentinel
 
-**A reproducible research platform for autonomous AI incident response.**
+**Autonomous AI incident response, evaluated like a research system—not a demo.**
 
-OpsSentinel studies one question:
+OpsSentinel is a production-style research platform for investigating a central question in agent engineering:
 
 > **When does additional agent reasoning improve production-incident diagnosis, and when does it instead create over-investigation, anchoring, wasted tool calls, overconfidence, or incomplete causal conclusions?**
 
-The project combines a deterministic microservice incident simulator, a constrained autonomous investigator, a frozen benchmark/evaluator, controlled experiments, production-style observability, and a human approval interface. Engineering correctness is gated independently from research outcomes: negative and null results are retained rather than tuned away.
+It combines a deterministic microservice incident simulator, a constrained autonomous investigator, a frozen benchmark/evaluator, controlled experiments, production observability, persistent experiment tracking, and a human approval interface. Engineering correctness is gated independently from research outcomes: negative and null results are retained rather than tuned away.
+
+<p align="center">
+  <img src="docs/assets/incident-console-light.webp" alt="OpsSentinel Incident Console showing a completed compound root-cause investigation" width="100%" />
+</p>
+
+## At a glance
+
+| Primary RCA | Complete exact match | Unsafe attempts | Frozen benchmark |
+| ---: | ---: | ---: | ---: |
+| **80%** | **20%** | **0** | **50 scenarios** |
+
+**Why this project matters:** OpsSentinel often found the acute primary root cause correctly, but the final hidden evaluation showed that high-confidence primary success can still hide incomplete causal understanding. The system is designed to expose that gap through evidence recall, secondary-cause recall, calibration, tool-efficiency, safety, and failure-taxonomy metrics—not just a single accuracy number.
+
+## Product surfaces
+
+### Incident Console
+
+The React Incident Console exposes the complete investigation lifecycle: bounded execution, evidence/hypothesis separation, tool progress, diagnosis confidence, secondary causes, approval/rejection controls, verification, and cost/latency accounting.
+
+<p align="center">
+  <img src="docs/assets/incident-console-light.webp" alt="Light-theme OpsSentinel Incident Console" width="100%" />
+</p>
+
+### Experiment Dashboard
+
+Persisted evaluation runs can be compared by RCA performance, evidence quality, tool use, safety, configuration, retrieval depth, and failure categories. Missing measurements remain missing; legitimate zeros remain zero.
+
+<p align="center">
+  <img src="docs/assets/experiment-dashboard-light.webp" alt="Light-theme OpsSentinel Experiment Dashboard" width="100%" />
+</p>
+
+### Observability
+
+The system exports operational and agent telemetry through OpenTelemetry, Prometheus/Grafana, and Langfuse. The deterministic local provider legitimately reports zero provider tokens and `$0` provider cost; the project does not synthesize fake usage to make dashboards look busier.
+
+<p align="center">
+  <img src="docs/assets/grafana-observability.webp" alt="OpsSentinel Grafana observability dashboard" width="100%" />
+</p>
+
+> **Screenshot provenance:** the Incident Console and Experiment Dashboard images are captured from the same deterministic browser-validation fixtures used by CI. The Grafana image is captured from the live seeded monitoring stack. These are presentation artifacts, not benchmark results.
 
 ## Final research result
 
@@ -50,6 +90,29 @@ See `docs/research-report.md` and `docs/phase-8-handoff.md`.
 
 ## System architecture
 
+```mermaid
+flowchart LR
+    U[Operator / Browser] --> FE[React Incident Console\nExperiment Dashboard]
+    FE --> API[FastAPI Backend]
+    API --> AG[Agent Runtime\nLangGraph]
+    AG --> MCP[Constrained MCP Tools]
+    MCP --> OBS[Service logs / metrics / health]
+    API --> DB[(PostgreSQL / pgvector)]
+    API --> OTEL[OpenTelemetry]
+    OTEL --> PROM[Prometheus / Grafana]
+    API --> LF[Langfuse]
+
+    CHAOS[ChaosLab\nDeterministic fault injection] --> OBS
+    BENCH[BenchmarkLab\n50 scenarios] --> EVAL[EvaluationLab]
+    API --> EVAL
+    EVAL --> DB
+
+    GT[(Hidden ground truth)] -. evaluator only .-> EVAL
+    GT -. never agent-visible .-> BENCH
+```
+
+The major layers are:
+
 1. **ChaosLab** — deterministic microservice simulator and modular fault injection.
 2. **OpsSentinel Agent Runtime** — LangGraph-based autonomous investigator with persisted state and constrained MCP tools.
 3. **Benchmark & Evaluation Laboratory** — versioned scenarios, frozen hidden truth, deterministic RCA/evidence/efficiency/calibration/safety scoring, failure taxonomy, persistence, and counterfactual evaluation.
@@ -65,6 +128,15 @@ The frozen release contains 50 scenarios:
 - 10 easy / 12 medium / 12 hard / 8 adversarial / 8 compound.
 
 `benchmarklab/release/opssentinel-benchmark-v1.0.json` pins the protected benchmark/evaluator source identities. The Phase 10 freeze verifier fails closed if scenario, ground-truth, split, or scoring definitions move.
+
+## Technology stack
+
+- **AI / agents:** Python, LangGraph, structured tool use, MCP, provider abstraction
+- **Backend / data:** FastAPI, PostgreSQL, pgvector, Redis, SQLAlchemy, Alembic
+- **Frontend:** React, TypeScript, Playwright
+- **Observability:** OpenTelemetry, Prometheus, Grafana, Langfuse
+- **Infrastructure:** Docker, Docker Compose, GitHub Actions
+- **Research:** BenchmarkLab, EvaluationLab, calibration metrics, failure taxonomy, preregistered experiments
 
 ## Reproduce
 
@@ -128,16 +200,18 @@ Relevant public 2026 benchmarks exist, including AgenticOpsEval/RCA100, RootCaus
 
 ## Validation status
 
-Phases 1–9 are fully closed and post-merge validated on `main`.
+**Phases 1–10 are fully closed.**
 
-Phase 10 has accepted the frozen Benchmark v1.0 contract and the first preregistered final held-out campaign. The final repository-wide Phase 1–10 cumulative release gate, guarded merge, and post-merge `main` revalidation still remain before the project is declared fully complete.
+The Phase 10 release PR passed the complete 18-workflow cumulative Phase 1–10 matrix on one exact head before guarded merge. The resulting release merge commit `e1e63bd50b481e0a2504cbb5b07971cf59067f3f` then passed post-merge CI, Benchmark v1.0 freeze verification, and clean-stack held-out reproducibility.
+
+The later light-theme frontend redesign was merged at `337f2bb8b26ed89509e96e65472bb21d6d725bd3`. Its exact PR head passed the relevant frontend/browser, CI, observability, benchmark, evaluator, freeze, and held-out regression gates; the merge commit then again passed post-merge CI, Phase 10 freeze, and held-out reproducibility. The presentation redesign does not replace or alter the authoritative first preregistered hidden result.
 
 ## Documentation
 
 - `docs/research-report.md` — final technical/research report
 - `docs/phase-10-heldout-results.md` — final hidden metrics and failure analysis
 - `docs/phase-10-external-validation.md` — external-benchmark compatibility decision
-- `docs/phase-10-handoff.md` — Phase 10 acceptance/remaining work
+- `docs/phase-10-handoff.md` — Phase 10 acceptance and closure record
 - `docs/phase-9-handoff.md` — observability, UI, cost/latency, Pareto, Langfuse
 - `docs/phase-8-handoff.md` — controlled experiments and null/negative findings
 - `docs/evaluationlab.md` — evaluator contract
