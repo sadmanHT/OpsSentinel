@@ -1,16 +1,14 @@
 # OpsSentinel
 
+[![CI](https://github.com/sadmanHT/OpsSentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sadmanHT/OpsSentinel/actions/workflows/ci.yml)
+
 **Autonomous AI incident response, evaluated like a research system—not a demo.**
 
-OpsSentinel is a production-style research platform for investigating a central question in agent engineering:
+OpsSentinel is a production-style AI engineering and research platform for investigating a central question in agent engineering:
 
 > **When does additional agent reasoning improve production-incident diagnosis, and when does it instead create over-investigation, anchoring, wasted tool calls, overconfidence, or incomplete causal conclusions?**
 
 It combines a deterministic microservice incident simulator, a constrained autonomous investigator, a frozen benchmark/evaluator, controlled experiments, production observability, persistent experiment tracking, and a human approval interface. Engineering correctness is gated independently from research outcomes: negative and null results are retained rather than tuned away.
-
-<p align="center">
-  <img src="docs/assets/incident-console-light.webp" alt="OpsSentinel Incident Console showing a completed compound root-cause investigation" width="100%" />
-</p>
 
 ## At a glance
 
@@ -18,35 +16,49 @@ It combines a deterministic microservice incident simulator, a constrained auton
 | ---: | ---: | ---: | ---: |
 | **80%** | **20%** | **0** | **50 scenarios** |
 
-**Why this project matters:** OpsSentinel often found the acute primary root cause correctly, but the final hidden evaluation showed that high-confidence primary success can still hide incomplete causal understanding. The system is designed to expose that gap through evidence recall, secondary-cause recall, calibration, tool-efficiency, safety, and failure-taxonomy metrics—not just a single accuracy number.
+The headline result is intentionally not just “80% accuracy.” OpsSentinel often found the acute primary root cause correctly, while the final hidden evaluation showed that high-confidence primary success could still hide incomplete causal understanding. The system therefore evaluates evidence recall, secondary-cause recall, calibration, tool efficiency, safety, and failure taxonomy—not just one accuracy number.
 
-## Product surfaces
+## Product screenshots
 
 ### Incident Console
 
-The React Incident Console exposes the complete investigation lifecycle: bounded execution, evidence/hypothesis separation, tool progress, diagnosis confidence, secondary causes, approval/rejection controls, verification, and cost/latency accounting.
+The React Incident Console exposes the full investigation lifecycle: bounded execution, evidence/hypothesis separation, tool progress, diagnosis confidence, secondary causes, human approval boundaries, verification, and cost/latency accounting.
 
 <p align="center">
-  <img src="docs/assets/incident-console-light.webp" alt="Light-theme OpsSentinel Incident Console" width="100%" />
+  <a href="docs/assets/incident-console-light.webp">
+    <img src="docs/assets/incident-console-light.webp" alt="OpsSentinel Incident Console showing a completed compound root-cause investigation" width="100%" />
+  </a>
 </p>
 
 ### Experiment Dashboard
 
-Persisted evaluation runs can be compared by RCA performance, evidence quality, tool use, safety, configuration, retrieval depth, and failure categories. Missing measurements remain missing; legitimate zeros remain zero.
+Persisted EvaluationLab runs can be compared by RCA performance, evidence quality, tool use, safety, configuration, retrieval depth, and failure categories. Missing measurements remain missing; legitimate zeros remain zero.
 
 <p align="center">
-  <img src="docs/assets/experiment-dashboard-light.webp" alt="Light-theme OpsSentinel Experiment Dashboard" width="100%" />
+  <a href="docs/assets/experiment-dashboard-light.webp">
+    <img src="docs/assets/experiment-dashboard-light.webp" alt="OpsSentinel Experiment Dashboard with persisted evaluation metrics" width="100%" />
+  </a>
 </p>
 
-### Observability
+### Grafana observability
 
-The system exports operational and agent telemetry through OpenTelemetry, Prometheus/Grafana, and Langfuse. The deterministic local provider legitimately reports zero provider tokens and `$0` provider cost; the project does not synthesize fake usage to make dashboards look busier.
+The live observability stack exposes operational and agent telemetry through OpenTelemetry, Prometheus/Grafana, and Langfuse. The deterministic local provider legitimately reports zero provider tokens and `$0` provider cost; the project does not manufacture usage to make the dashboard look busier.
 
 <p align="center">
-  <img src="docs/assets/grafana-observability.webp" alt="OpsSentinel Grafana observability dashboard" width="100%" />
+  <a href="docs/assets/grafana-observability.webp">
+    <img src="docs/assets/grafana-observability.webp" alt="OpsSentinel Grafana observability dashboard showing agent and system telemetry" width="100%" />
+  </a>
 </p>
 
-> **Screenshot provenance:** the Incident Console and Experiment Dashboard images are captured from the same deterministic browser-validation fixtures used by CI. The Grafana image is captured from the live seeded monitoring stack. These are presentation artifacts, not benchmark results.
+> **Screenshot provenance:** the Incident Console and Experiment Dashboard images come from the same deterministic browser-validation fixtures used by CI. The Grafana image comes from the live seeded monitoring stack. These screenshots are presentation artifacts, not benchmark measurements.
+
+## What this project demonstrates
+
+- **Agent engineering:** LangGraph orchestration, constrained MCP tools, bounded investigation, resumable state, and explicit human approval boundaries.
+- **Evaluation engineering:** frozen benchmark definitions, evaluator-only hidden truth, RCA/evidence/calibration/safety metrics, counterfactual evaluation, and deterministic failure taxonomy.
+- **Production engineering:** FastAPI, PostgreSQL/pgvector, Redis, Alembic migrations, Docker Compose, restart persistence, browser E2E tests, and cumulative CI.
+- **Observability:** OpenTelemetry traces, Prometheus metrics, Grafana dashboards, Langfuse traces, and durable cost/token/tool/latency accounting.
+- **Research discipline:** preregistered experiments, protected hidden-test results, preserved null/negative findings, and reproducible release artifacts.
 
 ## Final research result
 
