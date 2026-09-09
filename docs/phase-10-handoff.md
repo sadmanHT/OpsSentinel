@@ -2,7 +2,7 @@
 
 ## Status
 
-**IN PROGRESS — benchmark freeze and first final held-out evaluation accepted; publication/release work remains.**
+**FULLY CLOSED — final benchmark freeze, preregistered held-out evaluation, publication, cumulative release gate, guarded merge, and post-merge validation all accepted.**
 
 Phase 10 started from the fully closed Phase 9 `main` head `63eecc9f2561641204d557d3b0aa3ab95c172fa6` on branch `phase-10-final-validation-release`.
 
@@ -10,11 +10,11 @@ Phase 10 started from the fully closed Phase 9 `main` head `63eecc9f2561641204d5
 
 Complete OpsSentinel as a polished engineering and research artifact without introducing major new architecture unless required to repair defects found by final validation.
 
-The exit gate remains cumulative: current-phase validation, all prior regressions, clean-state Docker/Compose, representative end-to-end workflows, persistence/restart checks, security and privacy boundaries, documentation, and CI-equivalent verification must all pass together.
+The exit gate was cumulative: current-phase validation, all prior regressions, clean-state Docker/Compose, representative end-to-end workflows, persistence/restart checks, security and privacy boundaries, documentation, and CI-equivalent verification had to pass together.
 
 ## Checkpoint 10.1 — OpsSentinel Benchmark v1.0 freeze — ACCEPTED
 
-The existing BenchmarkLab release is frozen rather than redesigned:
+The existing BenchmarkLab release was frozen rather than redesigned:
 
 - benchmark name: `OpsSentinel BenchmarkLab`;
 - benchmark version: `1.0.0`;
@@ -28,7 +28,7 @@ The existing BenchmarkLab release is frozen rather than redesigned:
 
 The freeze intentionally does **not** pin execution/runtime files that may require legitimate software-defect repair during final validation.
 
-Accepted freeze workflow on the first clean checkpoint: `34259357625` at `97c927b70c830cf42b6dde22835a1633ff357bf4`. The freeze remained green at the held-out execution head.
+Accepted freeze workflow on the first clean checkpoint: `34259357625` at `97c927b70c830cf42b6dde22835a1633ff357bf4`.
 
 ## Checkpoint 10.2 — preregistered final hidden-test evaluation — ACCEPTED
 
@@ -84,24 +84,77 @@ Published research records:
 - `results/phase10/heldout-summary.json`;
 - `docs/phase-10-heldout-results.md`.
 
-The uploaded workflow artifact remains the authoritative raw output.
+The first successful workflow artifact remains the authoritative raw output. Later held-out runs are reproducibility/regression evidence and do not replace the research measurement.
+
+## Checkpoint 10.3 — publication and external-validation decision — ACCEPTED
+
+The final research report, research-first README, held-out summary, failure analysis, reproducibility commands, and external-validation compatibility decision were published without rewriting null/negative findings.
+
+No external numeric score was manufactured. AgenticOpsEval/RCA100, RootCauseBench, and ITBench-AA were assessed as materially different agent/task surfaces requiring separately preregistered adapters rather than an artificial direct comparison.
+
+## Checkpoint 10.4 — cumulative pre-merge release gate — ACCEPTED
+
+The final Phase 10 PR was gated on one exact head and required all intended cumulative workflows to run rather than treating a path-filter skip as a pass.
+
+Exact accepted PR head:
+
+`46573b40cb35022606414a4a7028762cbe1a6ad0`
+
+All **18/18** intended workflows passed on that exact head:
+
+- CI;
+- Phase 6 BenchmarkLab;
+- Phase 7 EvaluationLab;
+- Phase 8 ResearchLab;
+- Phase 8 H3 Temporal;
+- Phase 8 Tool Order;
+- Phase 8 Passive vs Verification;
+- Phase 8 Compound Handling;
+- Phase 9 Pareto;
+- Phase 9 Latency;
+- Phase 9 OpenTelemetry;
+- Phase 9 Prometheus Grafana;
+- Phase 9 Langfuse;
+- Phase 9 Incident Console;
+- Phase 9 Experiment Dashboard;
+- Phase 9 Representative Frontend;
+- Phase 10 Benchmark Freeze;
+- Phase 10 Final Held-Out Evaluation.
+
+No failed gate was ignored. The missing Phase 9 release-path coverage discovered during acceptance was repaired before merge so those workflows genuinely executed on the final head.
+
+## Checkpoint 10.5 — guarded merge and post-merge `main` validation — ACCEPTED
+
+PR #12, **Phase 10: final validation, research report, and release**, was merged only after re-confirming the exact green head and using an expected-head SHA guard.
+
+Release merge commit:
+
+`e1e63bd50b481e0a2504cbb5b07971cf59067f3f`
+
+The exact merge commit then passed:
+
+- generic cumulative CI, including clean-state Compose integration and restart/cleanup regression;
+- Phase 10 Benchmark Freeze;
+- Phase 10 Final Held-Out Evaluation from a clean stack, including restoration/log checks, artifact upload, and teardown.
+
+This completed Phase 10 and the Phase 1–10 release chain.
+
+## Later presentation-only frontend redesign
+
+After Phase 10 closure, the React Incident Console and Experiment Dashboard were visually redesigned in a light data-product theme without changing backend, agent, evaluator, benchmark, API, or research-result semantics.
+
+Frontend merge commit:
+
+`337f2bb8b26ed89509e96e65472bb21d6d725bd3`
+
+Its exact PR head passed the relevant browser/frontend, CI, observability, BenchmarkLab, EvaluationLab, freeze, and held-out regression workflows. The merge commit then again passed post-merge CI, Phase 10 Benchmark Freeze, and Phase 10 Final Held-Out Evaluation.
+
+The redesign is presentation-only and does not change the authoritative first preregistered hidden result above.
 
 ## Research-integrity rule after final evaluation
 
 The frozen benchmark, hidden-test composition, ground truth, metric definitions, and first successful hidden-test result must not be edited or replaced in response to observed performance.
 
-Software defects outside that protected research contract may still be repaired, followed by cumulative reruns. New research hypotheses belong on development/validation data or a future benchmark version.
+Software defects and presentation changes outside that protected research contract may be repaired, followed by cumulative regressions. New research hypotheses belong on development/validation data or a future benchmark version.
 
 Negative, null, and surprising findings remain valid outcomes and must be reported as measured.
-
-## Remaining Phase 10 work
-
-1. validate this published result/failure-analysis checkpoint on exact head;
-2. assess optional external validation and proceed only if a compatible public SRE benchmark can be used without distorting either task;
-3. write the final technical paper/results narrative from recorded artifacts;
-4. restructure the README around the research question, system, reproducibility, and measured positive/null/negative findings;
-5. add reproducible demo/benchmark/release commands and final release QA;
-6. synchronize documentation and portfolio-facing evidence;
-7. run the complete Phase 1–10 clean-state cumulative gate;
-8. open/review/merge the Phase 10 PR only after exact-head acceptance;
-9. revalidate `main` post-merge before declaring the project complete.
