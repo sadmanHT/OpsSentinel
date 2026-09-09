@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "check": "tsc -b --pretty false",
     "build": "tsc -b && vite build",
+    "test:browser": "node scripts/phase9-incident-console-proof.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
