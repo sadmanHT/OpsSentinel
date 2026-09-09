@@ -133,7 +133,7 @@ jobs:
         run: python scripts/phase8-temporal-reasoning-arm.py
 
       - name: Retain H3 raw trajectories
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-h3-${{ matrix.temporal }}
           path: phase8-h3-${{ matrix.temporal }}.json
@@ -189,7 +189,7 @@ jobs:
             phase8-h3-arms/phase8-h3-explicit_cause_effect.json
 
       - name: Retain complete H3 research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-h3-temporal-reasoning-report
           path: |

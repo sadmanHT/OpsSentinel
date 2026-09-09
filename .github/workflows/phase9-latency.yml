@@ -113,7 +113,7 @@ jobs:
         run: python scripts/phase9-latency-smoke.py
 
       - name: Retain live latency artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-latency-live
           path: phase9-latency-live.json

@@ -276,7 +276,7 @@ jobs:
           PY
 
       - name: Retain Pareto arm artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-pareto-${{ matrix.id }}
           path: phase9-pareto-${{ matrix.id }}.json
@@ -340,7 +340,7 @@ jobs:
             phase9-pareto-arms/phase9-pareto-p9-c08.json
 
       - name: Retain complete Pareto optimization artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-pareto-report
           path: |

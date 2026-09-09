@@ -141,7 +141,7 @@ jobs:
         run: python scripts/phase8-passive-verification-arm.py
 
       - name: Retain H4 raw trajectories
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-passive-verification-${{ matrix.evidence_mode }}
           path: phase8-passive-verification-${{ matrix.evidence_mode }}.json
@@ -197,7 +197,7 @@ jobs:
             phase8-passive-verification-arms/phase8-passive-verification-verification_enabled.json
 
       - name: Retain complete H4 research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-passive-verification-report
           path: |
