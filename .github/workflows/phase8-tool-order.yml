@@ -179,7 +179,7 @@ jobs:
           python -m pip install -e researchlab
 
       - name: Download Tool Order arms
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: phase8-tool-order-*
           path: phase8-tool-order-arms

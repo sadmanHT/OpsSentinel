@@ -193,7 +193,7 @@ jobs:
           python -m pip install -e researchlab
 
       - name: Download H5 arms
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: phase8-compound-*
           path: phase8-compound-arms
