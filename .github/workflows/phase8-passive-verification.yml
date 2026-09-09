@@ -183,7 +183,7 @@ jobs:
           python -m pip install -e researchlab
 
       - name: Download H4 arms
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: phase8-passive-verification-*
           path: phase8-passive-verification-arms

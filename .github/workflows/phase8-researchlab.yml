@@ -205,7 +205,7 @@ jobs:
           python -m pip install -e researchlab
 
       - name: Download architecture arms
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: phase8-h1-*
           path: phase8-h1-arms
