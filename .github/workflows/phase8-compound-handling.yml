@@ -150,7 +150,7 @@ jobs:
         run: python scripts/phase8-compound-handling-arm.py
 
       - name: Retain H5 raw trajectories
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-compound-${{ matrix.stopping_strategy }}
           path: phase8-compound-${{ matrix.stopping_strategy }}.json
@@ -207,7 +207,7 @@ jobs:
         run: python scripts/phase8-compound-handling-report.py
 
       - name: Retain complete H5 research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-compound-handling-report
           path: |

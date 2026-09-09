@@ -163,7 +163,7 @@ jobs:
         run: python scripts/phase8-planning-difficulty-arm.py
 
       - name: Retain planning/difficulty raw trajectories
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-h1-${{ matrix.architecture }}
           path: phase8-h1-${{ matrix.architecture }}.json
@@ -219,7 +219,7 @@ jobs:
             phase8-h1-arms/phase8-h1-reactive_react.json
 
       - name: Retain complete Experiment 1 research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-h1-planning-difficulty-report
           path: |
@@ -283,7 +283,7 @@ jobs:
         run: python scripts/phase8-investigation-budget-experiment.py
 
       - name: Retain complete Experiment 2 research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase8-h2-investigation-budget
           path: phase8-h2-investigation-budget.json

@@ -158,7 +158,7 @@ jobs:
           fi
 
       - name: Retain safe representative frontend proof
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-representative-frontend
           path: phase9-representative-frontend.json

@@ -119,7 +119,7 @@ jobs:
         run: python scripts/phase9-langfuse-smoke.py
 
       - name: Retain safe Langfuse proof
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-langfuse-live
           path: phase9-langfuse-live.json

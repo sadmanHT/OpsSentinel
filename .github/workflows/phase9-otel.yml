@@ -175,7 +175,7 @@ jobs:
           PY
 
       - name: Retain safe distributed-trace proof
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phase9-otel-distributed-trace
           path: phase9-otel-proof.json
