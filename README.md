@@ -94,6 +94,8 @@ The agent never receives benchmark ground truth or the fault-controller state. T
 
 The authoritative preregistered hidden-test campaign ran **10 untouched scenarios** from the frozen OpsSentinel Benchmark v1.0.
 
+> **Evaluation provider:** the published Benchmark v1.0 numbers use OpsSentinel's deterministic evidence-driven reasoning provider for reproducibility and ground-truth isolation. The runtime also supports Ollama/local LLM execution; those LLM runs are **not** represented by the published benchmark numbers. This is also why the authoritative held-out run reports `0` provider tokens and `$0` provider-estimated cost.
+
 | Metric | Result |
 | --- | ---: |
 | Primary RCA accuracy | **0.80** |
@@ -150,6 +152,9 @@ The system also validates restart behavior: persisted investigations and evaluat
 
 ## Run locally
 
+> [!WARNING]
+> The included Docker Compose configuration is a **local research/development stack**, not an Internet-facing production deployment. Services are bound to loopback, the simulator deliberately exposes test controls, and development credentials are convenient defaults. Do not expose this stack publicly without adding deployment-specific authentication, secret management, TLS/network policy, and authorization around operator actions.
+
 Requirements: Python 3.11+, Docker Compose, Node/npm, and the repository development dependencies.
 
 ```bash
@@ -173,6 +178,14 @@ Useful endpoints:
 - Experiment API: `http://localhost:8000/observability/experiments`
 - Run cost/latency: `http://localhost:8000/observability/runs/{run_id}/cost`
 - ChaosLab controller: `http://localhost:8100/health` — test harness only, never agent-visible
+
+## Reproducibility
+
+- `frontend/package-lock.json` is committed and CI/container builds use `npm ci`.
+- `backend/requirements.lock` pins the backend runtime dependency graph.
+- `backend/requirements-dev.lock` pins the backend development/test dependency graph.
+- Core PostgreSQL/pgvector and Redis Compose images are digest-pinned.
+- The benchmark release separately freezes benchmark and evaluator source blobs before held-out execution.
 
 ## Repository layout
 
@@ -204,6 +217,10 @@ scripts/          reproducibility and validation helpers
 - `docs/chaoslab.md` — simulator and fault model
 - `docs/mcp-safety.md` — tool safety and approval boundary
 - `docs/phase-10-heldout-results.md` — detailed hidden-test metrics and failure analysis
+
+## License
+
+Licensed under the [MIT License](LICENSE).
 
 ---
 
