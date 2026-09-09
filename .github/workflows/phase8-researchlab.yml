@@ -20,7 +20,7 @@ jobs:
   researchlab:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -73,7 +73,7 @@ jobs:
       OPSSENTINEL_MCP_REPO_ROOT: ${{ github.workspace }}
       OPSSENTINEL_MCP_DOCS_ROOT: ${{ github.workspace }}/docs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -113,7 +113,7 @@ jobs:
       PHASE8_EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
       OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -193,7 +193,7 @@ jobs:
     needs: live
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -238,7 +238,7 @@ jobs:
       OPSSENTINEL_DATABASE_URL: postgresql+psycopg://opssentinel:opssentinel@127.0.0.1:5432/opssentinel
       PHASE8_H2_OUTPUT: phase8-h2-investigation-budget.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:

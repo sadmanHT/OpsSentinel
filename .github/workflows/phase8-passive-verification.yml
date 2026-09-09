@@ -20,7 +20,7 @@ jobs:
   integrity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -80,7 +80,7 @@ jobs:
       PHASE8_EVIDENCE_MODE: ${{ matrix.evidence_mode }}
       PHASE8_PASSIVE_VERIFICATION_ARM_OUTPUT: phase8-passive-verification-${{ matrix.evidence_mode }}.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -171,7 +171,7 @@ jobs:
     needs: passive-verification-arm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:

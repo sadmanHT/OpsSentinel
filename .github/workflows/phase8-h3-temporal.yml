@@ -20,7 +20,7 @@ jobs:
   integrity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -75,7 +75,7 @@ jobs:
       PHASE8_H3_TEMPORAL: ${{ matrix.temporal }}
       PHASE8_H3_ARM_OUTPUT: phase8-h3-${{ matrix.temporal }}.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -163,7 +163,7 @@ jobs:
     needs: temporal-arm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
