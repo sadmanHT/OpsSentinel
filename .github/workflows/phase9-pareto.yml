@@ -21,7 +21,7 @@ jobs:
   integrity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -125,7 +125,7 @@ jobs:
       PHASE9_PARETO_CONFIG_ID: ${{ matrix.id }}
       PHASE9_PARETO_ARM_OUTPUT: phase9-pareto-${{ matrix.id }}.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -306,7 +306,7 @@ jobs:
     needs: arm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:

@@ -20,7 +20,7 @@ jobs:
   integrity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -85,7 +85,7 @@ jobs:
       PHASE8_STOPPING_STRATEGY: ${{ matrix.stopping_strategy }}
       PHASE8_COMPOUND_ARM_OUTPUT: phase8-compound-${{ matrix.stopping_strategy }}.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -180,7 +180,7 @@ jobs:
     needs: compound-arm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
