@@ -48,6 +48,16 @@ OpsSentinel exports system and agent telemetry through OpenTelemetry, Prometheus
   <img src="docs/assets/grafana-observability.webp" alt="OpsSentinel Grafana observability dashboard" width="700" />
 </p>
 
+## Demo
+
+The product surfaces above form the reviewer-facing walkthrough:
+
+1. Start an investigation from the **Incident Console** and watch the agent move from triage to evidence collection, hypothesis updates, diagnosis, and—when required—human approval and verification.
+2. Inspect the persisted evidence and tool history to see what the agent actually observed rather than relying on hidden chain-of-thought or simulator ground truth.
+3. Open the **Experiment Dashboard** and **Grafana** view to compare evaluation outcomes, failure categories, tool effort, latency, and provider-reported usage.
+
+For an interactive local demo, start the stack with `make clean-start`, then open `http://localhost:5173/`. ChaosLab remains a test-harness boundary and is never exposed to the agent as a source of hidden fault truth.
+
 ## Architecture
 
 ```mermaid
@@ -120,7 +130,23 @@ The agent was often good at identifying the acute primary failure, but compound 
 
 That makes OpsSentinel useful as more than an incident-response demo: the project measures **completeness, evidence coverage, calibration, tool efficiency, and safety**, not just whether one root-cause label matched.
 
-Controlled experiments also showed that simply adding more planning, larger tool budgets, forced investigation, or active verification did **not** reliably improve diagnosis. In some cases it increased work or latency without improving correctness. The strongest remaining problem is evidence interpretation and multi-cause completeness rather than access to more tools.
+## Experiments and trade-offs
+
+ResearchLab tested whether adding more reasoning structure or investigation effort actually improved diagnosis. The important outcomes were mixed rather than optimized away:
+
+| Comparison | Measured outcome |
+| --- | --- |
+| Reactive ReAct vs explicit planning | No sampled diagnostic improvement; compound secondary-cause omission remained |
+| Tool budgets 5 / 10 / 15 / 20 | All produced 0.80 RCA / 0.80 exact match with ~2.4 mean calls; the agent usually stopped before the smallest ceiling |
+| Deployment-first tool ordering | Increased mean calls from 2.8 to 3.6 without improving diagnosis |
+| Passive evidence vs active verification | Verification increased mean calls from 2.4 to 3.4 and roughly doubled sampled latency without improving diagnosis or calibration |
+| Compound unresolved-evidence strategy | Increased mean calls from 4.75 to 10.0, slightly increased evidence recall, reduced primary RCA from 0.75 to 0.50, and recovered no secondary causes |
+
+### Cost / accuracy frontier
+
+A sampled 80-trial Pareto campaign varied tool budget, planning strategy, retrieval depth, and verification strategy. The strongest frontier configurations reached **0.80 mean RCA/exact match with 2.4 mean tool calls**. Verification-enabled configurations used more calls without improving the best sampled accuracy. The model/provider dimension was intentionally fixed to the deterministic local provider, so OpsSentinel does **not** claim a cross-model cost frontier from these results.
+
+The overall conclusion is not “more reasoning is better.” The persistent bottleneck is deciding whether the current causal explanation is complete and calibrating confidence to that completeness.
 
 ## Safety and human control
 
@@ -187,6 +213,26 @@ Useful endpoints:
 - Core PostgreSQL/pgvector and Redis Compose images are digest-pinned.
 - The benchmark release separately freezes benchmark and evaluator source blobs before held-out execution.
 
+For the research contract specifically:
+
+```bash
+make phase10-freeze
+make phase10-heldout
+```
+
+`phase10-heldout` is a reproducibility/regression run; it does not replace the first successful preregistered hidden-test result recorded in the published research artifacts.
+
+## Limitations
+
+- The published baseline uses a **deterministic local reasoning provider**. Its results should not be generalized to frontier hosted LLMs.
+- The final hidden cohort contains only 10 scenarios and is deliberately weighted toward adversarial and compound structures; it is not a production incident-frequency estimate.
+- Provider-reported token usage and monetary cost are zero for the deterministic baseline, so tool calls, retrieval depth, and latency are the more informative resource measures for that campaign.
+- Compound diagnosis remains the main weakness: secondary-cause recall was 0.00 in the final hidden evaluation despite strong primary-cause performance.
+- Hidden counterfactual consistency is unavailable because the frozen hidden cohort contains no scorable counterfactual family.
+- Human approval flow is validated as a safety/control boundary, but the project does not claim that a human-participant study proved better operational decisions.
+- Related public SRE/agent benchmarks use materially different task and tool surfaces; OpsSentinel therefore does not publish an artificial directly-comparable external score.
+- The included Compose stack is designed for local research/development, not direct Internet-facing deployment.
+
 ## Repository layout
 
 ```text
@@ -212,6 +258,7 @@ scripts/          reproducibility and validation helpers
 
 ## Documentation
 
+- `docs/architecture.md` — final system architecture and trust boundaries
 - `docs/research-report.md` — technical and research report
 - `docs/evaluationlab.md` — evaluator and metric contract
 - `docs/chaoslab.md` — simulator and fault model
